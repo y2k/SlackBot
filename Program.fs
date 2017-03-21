@@ -28,6 +28,7 @@ let sendToTelegram token messages =
         |> List.map (fun x -> x.Message) 
         |> List.takeWhile (fun x -> isNull x.LeftChatMember)
         |> List.map (fun x -> string x.Chat.Id) 
+        |> List.distinct
     for chat in chats do
         for m in messages do
             if m <> "" then bot.SendTextMessageAsync(chat, m).Result |> ignore
