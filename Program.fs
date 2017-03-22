@@ -1,4 +1,5 @@
 ﻿open System
+open System.Net
 open System.Net.Http
 open System.IO
 open System.Reactive.Linq
@@ -29,9 +30,10 @@ let sendToTelegram token messages =
         |> List.takeWhile (fun x -> isNull x.LeftChatMember)
         |> List.map (fun x -> string x.Chat.Id) 
         |> List.distinct
+    let ms = messages |> List.filter ((<>) "") |> List.map WebUtility.HtmlDecode
     for chat in chats do
-        for m in messages do
-            if m <> "" then bot.SendTextMessageAsync(chat, m).Result |> ignore
+        for m in ms do
+            bot.SendTextMessageAsync(chat, m).Result |> ignore
     ()
 
 [<EntryPoint>]
