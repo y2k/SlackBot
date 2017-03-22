@@ -10,6 +10,10 @@ module Messengers =
     type Message = { text: string; user: string; ts: double }
     type Response = { messages: Message[] }
 
+    let getNewBotMessages token offset =
+        TelegramBotClient(token).GetUpdatesAsync(offset).Result 
+        |> Array.map (fun x -> { text = x.Message.Text; user = ""; ts = 0.}) |> Array.toList
+
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
     let getSlackMessages() =
         "http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&offset=0"
