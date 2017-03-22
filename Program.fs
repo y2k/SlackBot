@@ -7,6 +7,7 @@ open SlackToTelegram.Messengers
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&offset=0
 
+#r "../../.nuget/packages/system.reactive.windows.threading/3.1.1/lib/net45/System.Reactive.Windows.Threading.dll"
 #r "../../.nuget/packages/system.reactive.platformservices/3.1.1/lib/net45/System.Reactive.PlatformServices.dll"
 #r "../../.nuget/packages/system.reactive.interfaces/3.1.1/lib/net45/System.Reactive.Interfaces.dll"
 #r "../../.nuget/packages/system.reactive.core/3.1.1/lib/net45/System.Reactive.Core.dll"
@@ -14,6 +15,10 @@ http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&o
 
 #r "../../.nuget/packages/telegram.bot/10.4.0/lib/net45/Telegram.Bot.dll"
 #r "../../.nuget/packages/newtonsoft.json/9.0.1/lib/net45/Newtonsoft.Json.dll"
+
+System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.FromSeconds(30.))
+|> Observable.subscribe (fun xs -> printfn "hello world")
+|> ignore
 *)
 
 let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
