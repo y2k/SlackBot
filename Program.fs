@@ -1,11 +1,7 @@
 ﻿open System
-open System.Net
-open System.Net.Http
-open System.IO
 open System.Reactive.Linq
 open System.Threading
-open Telegram.Bot
-open Newtonsoft.Json
+open SlackToTelegram.Messengers
 
 (*
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
@@ -15,34 +11,14 @@ http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&o
 #r "../../.nuget/packages/newtonsoft.json/9.0.1/lib/net45/Newtonsoft.Json.dll"
 *)
 
-type Message = { text: string; user: string; ts: double }
-type Response = { messages: Message[] }
-
-let download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
 let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
-let sendToTelegram token messages =
-    let bot = TelegramBotClient(token)
-    let chats =
-        bot.GetUpdatesAsync().Result 
-        |> Array.toList
-        |> List.rev
-        |> List.map (fun x -> x.Message) 
-        |> List.takeWhile (fun x -> isNull x.LeftChatMember)
-        |> List.map (fun x -> string x.Chat.Id) 
-        |> List.distinct
-    let ms = messages |> List.filter ((<>) "") |> List.map WebUtility.HtmlDecode
-    for chat in chats do
-        for m in ms do
-            bot.SendTextMessageAsync(chat, m).Result |> ignore
-    ()
 
 [<EntryPoint>]
 let main argv =
     let token = argv.[0]
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
         |> Observable.map (fun _ -> 
-            "http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&offset=0"
-            |> download |> JsonSerializer().Deserialize<Response> 
+            getSlackMessages () 
             |> (fun x -> (Array.toList x.messages, x.messages.[0].ts)))
         |> Observable.scan (fun state (xs, stamp) -> 
             match state with
