@@ -1,7 +1,9 @@
 ﻿open System
 open System.Reactive.Linq
 open System.Threading
+open SlackToTelegram
 open SlackToTelegram.Messengers
+open SlackToTelegram.Storage
 
 (*
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
@@ -23,14 +25,18 @@ System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.From
 
 let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
 
-type Action = List | Help | Add of string | Remove of string
-
-let handle (message: string) = 
+let parseMessage (message: string) = 
     match message.Split(' ') |> Seq.toList with
     | "list"::_      -> List
     | "add"::x::_    -> Add x
     | "remove"::x::_ -> Remove x
     | _              -> Help
+
+let executeCommand (user: User) = function
+    | List     -> query user |> List.fold (fun a x -> x.id + ", " + a) ""
+    | Add x    -> add user x; "completed"
+    | Remove x -> remove user x; "completed"
+    | Help     -> "Commands: list, add <channel>, remove <channel>"
 
 [<EntryPoint>]
 let main argv =

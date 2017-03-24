@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="Messengers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
