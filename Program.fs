@@ -23,12 +23,14 @@ System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.From
 
 let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
 
+type Action = List | Help | Add of string | Remove of string
+
 let handle (message: string) = 
     match message.Split(' ') |> Seq.toList with
-    | "list"::_      -> "List of subscriptions"
-    | "add"::x::_    -> "Add" + x
-    | "remove"::x::_ -> "Remove" + x
-    | _              -> "Commands: list, add <thread>, remove <thread>"
+    | "list"::_      -> List
+    | "add"::x::_    -> Add x
+    | "remove"::x::_ -> Remove x
+    | _              -> Help
 
 [<EntryPoint>]
 let main argv =
