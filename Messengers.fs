@@ -7,10 +7,7 @@ module Messengers =
     open Telegram.Bot
     open Newtonsoft.Json
 
-    type Message = { text: string; user: string; ts: double }
-    type Response = { messages: Message[] }
-
-    let getNewBotMessages token offset =
+    let getNewBotMessages token (offset: TelegramOffset) =
         TelegramBotClient(token).GetUpdatesAsync(offset).Result 
         |> Array.map (fun x -> { text = x.Message.Text; user = ""; ts = 0.}) |> Array.toList
 
