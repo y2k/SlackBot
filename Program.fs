@@ -43,14 +43,6 @@ let executeCommand (user: User) = function
 let main argv =
     let token = argv.[0]
 
-    // query "ssfd" |> ignore
-
-(*
-
-System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.FromSeconds(30.0))    
-
-*)
-
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
         |> Observable.map (fun _ -> getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
