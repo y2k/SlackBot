@@ -21,7 +21,7 @@ module Storage =
     let query (user: User) = 
         querySql<Channel> "select * from subscriptions where user = '{0}'" [user]
     let remove (user: User) (id: ChannelId) =
-        execute "delete * from subscriptions where user = '{0}' and id = '{1}'" [user; id]
+        execute "delete from subscriptions where user = '{0}' and id = '{1}'" [user; id]
     let add (user: User) (id: ChannelId) =
         execute "insert into subscriptions (id, user) values ('{0}', '{1}')" [id; user]
 
