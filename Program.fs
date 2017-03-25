@@ -49,25 +49,28 @@ System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.From
 *)
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-        |> Observable.map (fun _ -> getNewBotMessages token 0)
-        |> Observable.subscribe (ignore)
+        |> Observable.map (fun _ -> getNewBotMessages token)
+        |> Observable.subscribe (fun xs ->
+            printfn "Show messages:"
+            for x in xs do
+                printfn "Message = %O" x)
         |> ignore
 
-    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-        |> Observable.map (fun _ -> 
-            getSlackMessages () 
-            |> (fun x -> (Array.toList x.messages, x.messages.[0].ts)))
-        |> Observable.scan (fun state (xs, stamp) -> 
-            match state with
-            | ([], 0.) -> (xs |> List.take 1, stamp)
-            | (_, prevStamp) -> (xs |> List.filter (fun x -> x.ts > prevStamp), stamp)
-            ) ([], 0.)
-        |> Observable.map (fun (xs, _) -> xs |> Seq.toList |> List.rev |> List.map (fun x -> x.text))
-        |> Observable.subscribe (fun xs -> 
-            printfn "=== === === === === === (%O)" DateTime.Now
-            for x in xs do printfn "New message = %O" x
-            sendToTelegram token xs)
-        |> ignore
+    // Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
+    //     |> Observable.map (fun _ -> 
+    //         getSlackMessages () 
+    //         |> (fun x -> (Array.toList x.messages, x.messages.[0].ts)))
+    //     |> Observable.scan (fun state (xs, stamp) -> 
+    //         match state with
+    //         | ([], 0.) -> (xs |> List.take 1, stamp)
+    //         | (_, prevStamp) -> (xs |> List.filter (fun x -> x.ts > prevStamp), stamp)
+    //         ) ([], 0.)
+    //     |> Observable.map (fun (xs, _) -> xs |> Seq.toList |> List.rev |> List.map (fun x -> x.text))
+    //     |> Observable.subscribe (fun xs -> 
+    //         printfn "=== === === === === === (%O)" DateTime.Now
+    //         for x in xs do printfn "New message = %O" x
+    //         sendToTelegram token xs)
+    //     |> ignore
     
     printfn "listening for slack updates..."
     Thread.Sleep(-1)

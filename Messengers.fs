@@ -6,10 +6,15 @@ module Messengers =
     open System.Reactive.Linq
     open Telegram.Bot
     open Newtonsoft.Json
+    open SlackToTelegram.Storage
 
-    let getNewBotMessages token (offset: TelegramOffset) =
-        TelegramBotClient(token).GetUpdatesAsync(offset).Result 
-        |> Array.map (fun x -> { text = x.Message.Text; user = ""; ts = 0.}) |> Array.toList
+    let getNewBotMessages token =
+        let offset = getOffset () |> Option.defaultValue 0
+        printfn "offfset = %O" offset
+        let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result
+        msgs |> Array.map (fun x -> x.Id) |> Array.sortDescending |> Array.tryHead
+             |> (fun x -> match x with | Some offset -> setOffset (offset + 1) | _ -> ())
+        msgs |> Array.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = 0.}) |> Array.toList
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
     let getSlackMessages() =
