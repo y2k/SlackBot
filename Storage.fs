@@ -9,11 +9,6 @@ module Storage =
         let xs = args |> List.map (fun x -> x :> obj) |> List.toArray
         String.Format(template, xs)
 
-(*
-let format template args =
-    let xs = args |> List.map (fun x -> x :> obj) |> List.toArray
-    String.Format(template, xs)
-*)
     let private connection = lazy (
         let db = new SqliteConnection("DataSource=main.db")
         db.Execute("create table if not exists subscriptions (id TEXT, user TEXT)") |> ignore
@@ -28,7 +23,7 @@ let format template args =
     let remove (user: User) (id: ChannelId) =
         execute "delete * from subscriptions where user = '{0}' and id = '{1}'" [user; id]
     let add (user: User) (id: ChannelId) =
-        execute "insert into subscriptions (id, user) values ('{0}', '{1}')" [user; id]
+        execute "insert into subscriptions (id, user) values ('{0}', '{1}')" [id; user]
 
     let getOffset () =
         querySql<TelegramOffset> "select id from offset" [] |> List.tryHead
