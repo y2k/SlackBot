@@ -34,7 +34,7 @@ let parseMessage (message: string) =
     | _              -> Help
 
 let executeCommand (user: User) = function
-    | List     -> query user |> List.fold (fun a x -> x.id + ", " + a) "List: "
+    | List     -> query user |> List.map (fun x -> x.id) |> List.reduce (fun a x -> a + ", " + x) |> (+) "List: "
     | Add x    -> add user x; "completed"
     | Remove x -> remove user x; "completed"
     | Help     -> "Commands: list, add <channel>, remove <channel>"
