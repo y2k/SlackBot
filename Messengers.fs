@@ -11,10 +11,10 @@ module Messengers =
     let getNewBotMessages token =
         let offset = getOffset () |> Option.defaultValue 0
         printfn "offfset = %O" offset
-        let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result
-        msgs |> Array.map (fun x -> x.Id) |> Array.sortDescending |> Array.tryHead
+        let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result |> Array.toList
+        msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
              |> (fun x -> match x with | Some offset -> setOffset (offset + 1) | _ -> ())
-        msgs |> Array.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = 0.}) |> Array.toList
+        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = 0.})
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
     let getSlackMessages() =
