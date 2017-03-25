@@ -14,7 +14,7 @@ module Messengers =
         let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result |> Array.toList
         msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
              |> (fun x -> match x with | Some offset -> setOffset (offset + 1) | _ -> ())
-        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = 0.})
+        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id })
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
     let getSlackMessages() =

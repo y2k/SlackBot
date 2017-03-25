@@ -10,5 +10,5 @@ type Channel = { id: ChannelId; user: User }
 
 type Action = List | Help | Add of string | Remove of string
 
-type Message = { text: string; user: string; ts: double }
+type Message = { text: string; user: string }
 type Response = { messages: Message[] }
