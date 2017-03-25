@@ -4,6 +4,7 @@ open System.Threading
 open SlackToTelegram
 open SlackToTelegram.Messengers
 open SlackToTelegram.Storage
+open SlackToTelegram.Utils
 
 (*
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
@@ -33,7 +34,7 @@ let parseMessage (message: string) =
     | _              -> Help
 
 let executeCommand (user: User) = function
-    | List     -> query user |> List.fold (fun a x -> x.id + ", " + a) ""
+    | List     -> query user |> List.fold (fun a x -> x.id + ", " + a) "List: "
     | Add x    -> add user x; "completed"
     | Remove x -> remove user x; "completed"
     | Help     -> "Commands: list, add <channel>, remove <channel>"
@@ -42,18 +43,21 @@ let executeCommand (user: User) = function
 let main argv =
     let token = argv.[0]
 
+    // query "ssfd" |> ignore
+
 (*
 
 System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.FromSeconds(30.0))    
 
 *)
 
-    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
+    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
         |> Observable.map (fun _ -> getNewBotMessages token)
-        |> Observable.subscribe (fun xs ->
-            printfn "Show messages:"
-            for x in xs do
-                printfn "Message = %O" x)
+        |> flatMap (fun x -> x.ToObservable())
+        |> Observable.map (fun x -> (x.user, x.text |> parseMessage |> executeCommand x.user))
+        |> Observable.subscribe (fun (user, response) ->
+            sendToTelegramSingle token user response
+            printfn "Message = %O" response)
         |> ignore
 
     // Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))

@@ -21,6 +21,10 @@ module Messengers =
         "http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&offset=0"
         |> download |> JsonSerializer().Deserialize<Response> 
 
+    let sendToTelegramSingle (token: Token) (user: User) message =
+        let bot = TelegramBotClient(token)
+        bot.SendTextMessageAsync(user, message).Result |> ignore
+
     let sendToTelegram token messages =
         let bot = TelegramBotClient(token)
         let chats =
