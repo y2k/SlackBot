@@ -10,7 +10,6 @@ module Messengers =
 
     let getNewBotMessages token =
         let offset = getOffset () |> Option.defaultValue 0
-        printfn "offfset = %O" offset
         let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result |> Array.toList
         msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
              |> (fun x -> match x with | Some offset -> setOffset (offset + 1) | _ -> ())

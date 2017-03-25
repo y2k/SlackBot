@@ -34,7 +34,9 @@ let parseMessage (message: string) =
     | _              -> Help
 
 let executeCommand (user: User) = function
-    | List     -> query user |> List.map (fun x -> x.id) |> List.reduce (fun a x -> a + ", " + x) |> (+) "List: "
+    | List     -> query user |> List.map (fun x -> x.id) 
+                             |> List.reduce (fun a x -> a + ", " + x) 
+                             |> (+) "Your channels: "
     | Add x    -> add user x; "completed"
     | Remove x -> remove user x; "completed"
     | Help     -> "Commands: list, add <channel>, remove <channel>"
@@ -50,6 +52,12 @@ let main argv =
         |> Observable.subscribe (fun (user, response) ->
             sendToTelegramSingle token user response
             printfn "Message = %O" response)
+        |> ignore
+
+    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
+        |> Observable.map (fun _ -> getAllChannels ())
+        |> flatMap (fun x -> x.ToObservable())
+        |> Observable.subscribe (printfn "task = %O")
         |> ignore
 
     // Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))

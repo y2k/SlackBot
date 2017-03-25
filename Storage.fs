@@ -29,3 +29,6 @@ module Storage =
         querySql<TelegramOffset> "select id from offset" [] |> List.tryHead
     let setOffset (o:TelegramOffset) =
         execute "delete from offset; insert into offset (id) values ('{0}')" [o]
+
+    let getAllChannels () =
+        querySql<string> "select distinct id from subscriptions" []
