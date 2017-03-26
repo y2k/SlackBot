@@ -13,10 +13,12 @@ module Messengers =
     open SlackToTelegram.Storage
 
     let getNewBotMessages token =
-        let offset = getOffset () |> Option.defaultValue 0
-        let msgs = TelegramBotClient(token).GetUpdatesAsync(offset).Result |> Array.toList
+        let offset = getOffsetWith TelegramId |> Option.defaultValue "0"
+        let msgs = TelegramBotClient(token).GetUpdatesAsync(int offset).Result |> Array.toList
         msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
-             |> (fun x -> match x with | Some offset -> setOffset (offset + 1) | _ -> ())
+             |> (fun x -> match x with 
+                          | Some offset -> setOffsetWith TelegramId (string (offset + 1)) 
+                          | _ -> ())
         msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id })
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader

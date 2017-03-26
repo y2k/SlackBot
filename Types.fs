@@ -1,6 +1,6 @@
 namespace SlackToTelegram
 
-type TelegramOffset = int
+type TelegramOffset = string
 
 type User = string
 type Token = string

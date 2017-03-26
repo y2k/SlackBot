@@ -5,6 +5,8 @@ module Storage =
     open Dapper
     open Microsoft.Data.Sqlite
 
+    let TelegramId = "_ _"
+
     let private format template args =
         let xs = args |> List.map (fun x -> x :> obj) |> List.toArray
         String.Format(template, xs)
@@ -31,11 +33,7 @@ module Storage =
     let getUsersForChannel (channel: string) =
         querySql<string> "select user from channels where id = '{0}'" [channel]
 
-    let getOffset () =
-        querySql<TelegramOffset> "select ts from offsets where id = '___'" [] |> List.tryHead
-    let setOffset (o:TelegramOffset) =
-        execute "delete from offsets where id = '___'; insert into offsets (id, ts) values ('___', '{0}')" [o]
     let getOffsetWith (id: string) =
         querySql<TelegramOffset> "select ts from offsets where id = '{0}'" [id] |> List.tryHead
     let setOffsetWith (id: string) (o:TelegramOffset) =
-        execute "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" [id; string o]
+        execute "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" [id; o]
