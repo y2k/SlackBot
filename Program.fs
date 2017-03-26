@@ -10,7 +10,8 @@ module db  = SlackToTelegram.Storage
 
 let parseMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
-    | "list"::_      -> db.query user |> List.map (fun x -> "<code>" + x.id + "</code>")
+    | "list"::_      -> db.query user |> List.sortBy (fun x -> x.id)
+                                      |> List.map (fun x -> "<code>" + x.id + "</code>")
                                       |> List.reduce (fun a x -> a + ", " + x)
                                       |> (+) "Каналы на которые вы подписаны: "
     | "add"::x::_    -> db.add user x; "Подписка на <code>" + x + "</code> выполнена успешно"
