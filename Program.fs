@@ -55,7 +55,7 @@ let main argv =
                  |> bot.sendToTelegramSingle token tid Plane)
         |> (fun o -> o.Subscribe({ new IObserver<unit> with
                                     member this.OnError(e) = printfn "Error = %O" e
-                                    member this.OnNext(s) = ()
+                                    member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
                                     member this.OnCompleted() = () } ))
         |> ignore
     
