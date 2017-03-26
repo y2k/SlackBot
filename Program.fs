@@ -62,10 +62,9 @@ let main argv =
         |> flatMap (fun x -> x.ToObservable())
         |> flatMap (fun ch -> 
             let msgs = getSlackMessages ch.channel_id
-            let users = getUsersForChannel ch.name
-            let xxx = users |> List.map (fun tid -> (tid, ch.name, msgs))
-            xxx.ToObservable()
-            )
+            getUsersForChannel ch.name 
+                |> List.map (fun tid -> (tid, ch.name, msgs))
+                |> (fun x -> x.ToObservable()))
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> Observable.subscribe (fun (tid, chName, msgs) -> 
             msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n" + a) ""
