@@ -13,8 +13,7 @@ module Storage =
         let db = new SqliteConnection("DataSource=main.db")
         db.Execute("
             create table if not exists channels (id TEXT, user TEXT);
-            create table if not exists offsets (id INTEGER, ts NUMBER);
-        ") |> ignore
+            create table if not exists offsets (id INTEGER, ts NUMBER);") |> ignore
         db)
 
     let private querySql<'T> sql args = connection.Value.Query<'T>(format sql args) |> Seq.toList
@@ -36,3 +35,7 @@ module Storage =
         querySql<TelegramOffset> "select ts from offsets where id = '___'" [] |> List.tryHead
     let setOffset (o:TelegramOffset) =
         execute "delete from offsets where id = '___'; insert into offsets (id, ts) values ('___', '{0}')" [o]
+    let getOffsetWith (id: string) =
+        querySql<TelegramOffset> "select ts from offsets where id = '{0}'" [id] |> List.tryHead
+    let setOffsetWith (id: string) (o:TelegramOffset) =
+        execute "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" [id; string o]
