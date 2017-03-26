@@ -40,6 +40,9 @@ module Messengers =
         |> download |> JsonSerializer().Deserialize<ChannelsResponse> 
         |> (fun x -> x.channels |> Array.toList)
 
-    let sendToTelegramSingle (token: Token) (user: User) message =
+    let sendToTelegramSingle (token: Token) (user: User) html message =
         let bot = TelegramBotClient(token)
-        bot.SendTextMessageAsync(user, message).Result |> ignore
+        match html with
+        | Styled  -> bot.SendTextMessageAsync(user, message, parseMode = Types.Enums.ParseMode.Html).Result
+        | Plane -> bot.SendTextMessageAsync(user, message).Result
+        |> ignore

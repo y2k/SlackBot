@@ -11,6 +11,8 @@ type Channel = { id: ChannelId; user: User }
 
 type SlackMessage = { text: string; user: string; ts: string }
 
+type TextMode = | Plane | Styled
+
 module Utils =
     open System
     open System.Reactive.Linq

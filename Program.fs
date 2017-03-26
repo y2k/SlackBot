@@ -25,12 +25,15 @@ http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&o
 
 let parseMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
-    | "list"::_      -> db.query user |> List.map (fun x -> x.id) 
-                                      |> List.reduce (fun a x -> a + ", " + x) 
-                                      |> (+) "Your channels: "
-    | "add"::x::_    -> db.add user x; "completed"
-    | "remove"::x::_ -> db.remove user x; "completed"
-    | _              -> "Commands: list, add <channel>, remove <channel>"
+    | "list"::_      -> db.query user |> List.map (fun x -> "<code>" + x.id + "</code>")
+                                      |> List.reduce (fun a x -> a + ", " + x)
+                                      |> (+) "Каналы на которые вы подписанны: "
+    | "add"::x::_    -> db.add user x; "Подписка на <code>" + x + "</code> выполненно успешно"
+    | "remove"::x::_ -> db.remove user x; "Отписка от <code>" + x + "</code> выполнена успешно"
+    | _              -> "<b>Команды бота:</b>
+• <b>list</b> - список каналов kotlinlang.slack.com на которые вы подписанны
+• <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
+• <b>remove</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)"
 
 [<EntryPoint>]
 let main argv =
@@ -41,8 +44,8 @@ let main argv =
         |> flatMap (fun x -> x.ToObservable())
         |> Observable.map (fun x -> (x.user, x.text |> parseMessage x.user))
         |> Observable.subscribe (fun (user, response) ->
-            bot.sendToTelegramSingle token user response
-            printfn "Message = %O" response)
+            printfn "Message = %O" response
+            bot.sendToTelegramSingle token user Styled response)
         |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
@@ -63,7 +66,7 @@ let main argv =
         |> Observable.subscribe (fun (tid, chName, msgs) -> 
             msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n\n" + a) ""
                  |> ((+) ("=== New messages from " + chName.ToUpper() + " ===\n\n"))
-                 |> bot.sendToTelegramSingle token tid)
+                 |> bot.sendToTelegramSingle token tid Plane)
         |> ignore
     
     printfn "listening for slack updates..."
