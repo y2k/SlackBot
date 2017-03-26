@@ -9,7 +9,7 @@ type ChannelId = string
 
 type Channel = { id: ChannelId; user: User }
 
-type SlackMessage = { text: string; user: string }
+type SlackMessage = { text: string; user: string; ts: string }
 
 module Utils =
     open System

@@ -20,19 +20,20 @@ module Messengers =
              |> (fun x -> match x with 
                           | Some offset -> db.setOffsetWith db.TelegramId (string (offset + 1)) 
                           | _ -> ())
-        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id })
+        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = "" })
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
 
     type UserResponse = { user_id: string; name: string; ts: double }
     type RelatedResponse = { users: Dictionary<string, UserResponse> }
     type MessagesResponse = { messages: SlackMessage[]; related: RelatedResponse }
+    
     let getSlackMessages (channelId: string) =
         "http://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
         |> download |> JsonSerializer().Deserialize<MessagesResponse> 
-        |> (fun r -> r.messages 
+        |> (fun r -> r.messages
                      |> Array.toList 
-                     |> List.map (fun x -> { user = r.related.users.[x.user].name; text = x.text}))
+                     |> List.map (fun x -> { x with user = r.related.users.[x.user].name }))
 
     type ChannelsResponse = { channels: SlackChannel[] }
     let getSlackChannels () =

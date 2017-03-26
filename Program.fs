@@ -52,6 +52,7 @@ let main argv =
         |> flatMap (fun x -> x.ToObservable())
         |> flatMap (fun ch -> 
             let msgs = bot.getSlackMessages ch.channel_id
+                       |> List.takeWhile (fun x -> false)
             db.getUsersForChannel ch.name 
                 |> List.map (fun tid -> (tid, ch.name, msgs))
                 |> (fun x -> x.ToObservable()))
