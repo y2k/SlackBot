@@ -55,8 +55,11 @@ let main argv =
         |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-        |> Observable.map (fun _ -> getAllChannels ())
+        |> Observable.map (fun _ -> 
+            let dbChannels = getAllChannels ()
+            getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
+        |> Observable.map (fun x -> (x.name, getSlackMessages x.channel_id))
         |> Observable.subscribe (printfn "task = %O")
         |> ignore
 

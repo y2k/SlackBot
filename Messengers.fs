@@ -1,4 +1,7 @@
 namespace SlackToTelegram
+
+type SlackChannel = { channel_id: string; name: string }
+
 module Messengers =
     open System.IO
     open System.Net
@@ -16,9 +19,18 @@ module Messengers =
         msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id })
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
-    let getSlackMessages() =
-        "http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&offset=0"
-        |> download |> JsonSerializer().Deserialize<Response> 
+
+    type MessagesResponse = { messages: SlackMessage[] }
+    let getSlackMessages (channelId: string) =
+        "http://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
+        |> download |> JsonSerializer().Deserialize<MessagesResponse> 
+        |> (fun x -> x.messages |> Array.toList)
+
+    type ChannelsResponse = { channels: SlackChannel[] }
+    let getSlackChannels () =
+        "http://api.slackarchive.io/v1/channels?team_id=T09229ZC6" 
+        |> download |> JsonSerializer().Deserialize<ChannelsResponse> 
+        |> (fun x -> x.channels |> Array.toList)
 
     let sendToTelegramSingle (token: Token) (user: User) message =
         let bot = TelegramBotClient(token)
