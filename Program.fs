@@ -3,10 +3,10 @@ open System.Net
 open System.Reactive.Linq
 open System.Threading
 open SlackToTelegram
-open SlackToTelegram.Messengers
 open SlackToTelegram.Utils
 
-module db = SlackToTelegram.Storage
+module bot = SlackToTelegram.Messengers
+module db  = SlackToTelegram.Storage
 
 (*
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
@@ -21,9 +21,6 @@ http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C09222272&o
 #r "../../.nuget/packages/telegram.bot/10.4.0/lib/net45/Telegram.Bot.dll"
 #r "../../.nuget/packages/newtonsoft.json/9.0.1/lib/net45/Newtonsoft.Json.dll"
 
-System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.FromSeconds(30.))
-|> Observable.subscribe (fun xs -> printfn "hello world")
-|> ignore
 *)
 
 let parseMessage (user: User) (message: string) = 
@@ -40,21 +37,21 @@ let main argv =
     let token = argv.[0]
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
-        |> Observable.map (fun _ -> getNewBotMessages token)
+        |> Observable.map (fun _ -> bot.getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
         |> Observable.map (fun x -> (x.user, x.text |> parseMessage x.user))
         |> Observable.subscribe (fun (user, response) ->
-            sendToTelegramSingle token user response
+            bot.sendToTelegramSingle token user response
             printfn "Message = %O" response)
         |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
         |> Observable.map (fun _ -> 
             let dbChannels = db.getAllChannels ()
-            getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
+            bot.getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
         |> flatMap (fun ch -> 
-            let msgs = getSlackMessages ch.channel_id
+            let msgs = bot.getSlackMessages ch.channel_id
             db.getUsersForChannel ch.name 
                 |> List.map (fun tid -> (tid, ch.name, msgs))
                 |> (fun x -> x.ToObservable()))
@@ -62,7 +59,7 @@ let main argv =
         |> Observable.subscribe (fun (tid, chName, msgs) -> 
             msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n\n" + a) ""
                  |> ((+) ("=== New messages from " + chName.ToUpper() + " ===\n\n"))
-                 |> sendToTelegramSingle token tid)
+                 |> bot.sendToTelegramSingle token tid)
         |> ignore
     
     printfn "listening for slack updates..."
