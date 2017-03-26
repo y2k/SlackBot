@@ -4,8 +4,9 @@ open System.Reactive.Linq
 open System.Threading
 open SlackToTelegram
 open SlackToTelegram.Messengers
-open SlackToTelegram.Storage
 open SlackToTelegram.Utils
+
+module db = SlackToTelegram.Storage
 
 (*
 http://api.slackarchive.io/v1/messages?size=5&team=T09229ZC6&channel=C2X2LMYQ2&offset=0
@@ -27,11 +28,11 @@ System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.From
 
 let parseMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
-    | "list"::_      -> query user |> List.map (fun x -> x.id) 
-                                   |> List.reduce (fun a x -> a + ", " + x) 
-                                   |> (+) "Your channels: "
-    | "add"::x::_    -> add user x; "completed"
-    | "remove"::x::_ -> remove user x; "completed"
+    | "list"::_      -> db.query user |> List.map (fun x -> x.id) 
+                                      |> List.reduce (fun a x -> a + ", " + x) 
+                                      |> (+) "Your channels: "
+    | "add"::x::_    -> db.add user x; "completed"
+    | "remove"::x::_ -> db.remove user x; "completed"
     | _              -> "Commands: list, add <channel>, remove <channel>"
 
 [<EntryPoint>]
@@ -49,12 +50,12 @@ let main argv =
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
         |> Observable.map (fun _ -> 
-            let dbChannels = getAllChannels ()
+            let dbChannels = db.getAllChannels ()
             getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
         |> flatMap (fun ch -> 
             let msgs = getSlackMessages ch.channel_id
-            getUsersForChannel ch.name 
+            db.getUsersForChannel ch.name 
                 |> List.map (fun tid -> (tid, ch.name, msgs))
                 |> (fun x -> x.ToObservable()))
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)

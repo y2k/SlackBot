@@ -1,5 +1,4 @@
 namespace SlackToTelegram
-
 module Storage =
     open System
     open Dapper

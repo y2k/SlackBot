@@ -10,14 +10,15 @@ module Messengers =
     open System.Reactive.Linq
     open Newtonsoft.Json
     open Telegram.Bot
-    open SlackToTelegram.Storage
+    
+    module db = SlackToTelegram.Storage
 
     let getNewBotMessages token =
-        let offset = getOffsetWith TelegramId |> Option.defaultValue "0"
+        let offset = db.getOffsetWith db.TelegramId |> Option.defaultValue "0"
         let msgs = TelegramBotClient(token).GetUpdatesAsync(int offset).Result |> Array.toList
         msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
              |> (fun x -> match x with 
-                          | Some offset -> setOffsetWith TelegramId (string (offset + 1)) 
+                          | Some offset -> db.setOffsetWith db.TelegramId (string (offset + 1)) 
                           | _ -> ())
         msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id })
 
