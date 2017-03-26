@@ -3,12 +3,13 @@ namespace SlackToTelegram
 type SlackChannel = { channel_id: string; name: string }
 
 module Messengers =
+    open System.Collections.Generic
     open System.IO
     open System.Net
     open System.Net.Http
     open System.Reactive.Linq
-    open Telegram.Bot
     open Newtonsoft.Json
+    open Telegram.Bot
     open SlackToTelegram.Storage
 
     let getNewBotMessages token =
@@ -20,11 +21,15 @@ module Messengers =
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
 
-    type MessagesResponse = { messages: SlackMessage[] }
+    type UserResponse = { user_id: string; name: string }
+    type RelatedResponse = { users: Dictionary<string, UserResponse> }
+    type MessagesResponse = { messages: SlackMessage[]; related: RelatedResponse }
     let getSlackMessages (channelId: string) =
         "http://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
         |> download |> JsonSerializer().Deserialize<MessagesResponse> 
-        |> (fun x -> x.messages |> Array.toList)
+        |> (fun r -> r.messages 
+                     |> Array.toList 
+                     |> List.map (fun x -> { user = r.related.users.[x.user].name; text = x.text}))
 
     type ChannelsResponse = { channels: SlackChannel[] }
     let getSlackChannels () =
