@@ -32,3 +32,6 @@ module Storage =
 
     let getAllChannels () =
         querySql<string> "select distinct id from subscriptions" []
+
+    let getUsersForChannel (channel: string) =
+        querySql<string> "select user from subscriptions where id = '{0}'" [channel]

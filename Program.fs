@@ -1,4 +1,5 @@
 ﻿open System
+open System.Net
 open System.Reactive.Linq
 open System.Threading
 open SlackToTelegram
@@ -59,25 +60,18 @@ let main argv =
             let dbChannels = getAllChannels ()
             getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
-        |> Observable.map (fun x -> (x.name, getSlackMessages x.channel_id))
-        |> Observable.subscribe (printfn "task = %O")
+        |> flatMap (fun ch -> 
+            let msgs = getSlackMessages ch.channel_id
+            let users = getUsersForChannel ch.name
+            let xxx = users |> List.map (fun tid -> (tid, ch.name, msgs))
+            xxx.ToObservable()
+            )
+        |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
+        |> Observable.subscribe (fun (tid, chName, msgs) -> 
+            msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n" + a) ""
+                 |> ((+) ("=== New pots from " + chName.ToUpper() + " ===\n\n"))
+                 |> sendToTelegramSingle token tid)
         |> ignore
-
-    // Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-    //     |> Observable.map (fun _ -> 
-    //         getSlackMessages () 
-    //         |> (fun x -> (Array.toList x.messages, x.messages.[0].ts)))
-    //     |> Observable.scan (fun state (xs, stamp) -> 
-    //         match state with
-    //         | ([], 0.) -> (xs |> List.take 1, stamp)
-    //         | (_, prevStamp) -> (xs |> List.filter (fun x -> x.ts > prevStamp), stamp)
-    //         ) ([], 0.)
-    //     |> Observable.map (fun (xs, _) -> xs |> Seq.toList |> List.rev |> List.map (fun x -> x.text))
-    //     |> Observable.subscribe (fun xs -> 
-    //         printfn "=== === === === === === (%O)" DateTime.Now
-    //         for x in xs do printfn "New message = %O" x
-    //         sendToTelegram token xs)
-    //     |> ignore
     
     printfn "listening for slack updates..."
     Thread.Sleep(-1)

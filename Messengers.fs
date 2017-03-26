@@ -40,19 +40,3 @@ module Messengers =
     let sendToTelegramSingle (token: Token) (user: User) message =
         let bot = TelegramBotClient(token)
         bot.SendTextMessageAsync(user, message).Result |> ignore
-
-    let sendToTelegram token messages =
-        let bot = TelegramBotClient(token)
-        let chats =
-            bot.GetUpdatesAsync().Result 
-            |> Array.toList
-            |> List.rev
-            |> List.map (fun x -> x.Message) 
-            |> List.takeWhile (fun x -> isNull x.LeftChatMember)
-            |> List.map (fun x -> string x.Chat.Id) 
-            |> List.distinct
-        let ms = messages |> List.filter ((<>) "") |> List.map WebUtility.HtmlDecode
-        for chat in chats do
-            for m in ms do
-                bot.SendTextMessageAsync(chat, m).Result |> ignore
-        ()
