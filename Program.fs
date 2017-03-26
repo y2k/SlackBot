@@ -27,11 +27,11 @@ let parseMessage (user: User) (message: string) =
     match message.Split(' ') |> Seq.toList with
     | "list"::_      -> db.query user |> List.map (fun x -> "<code>" + x.id + "</code>")
                                       |> List.reduce (fun a x -> a + ", " + x)
-                                      |> (+) "Каналы на которые вы подписанны: "
+                                      |> (+) "Каналы на которые вы подписаны: "
     | "add"::x::_    -> db.add user x; "Подписка на <code>" + x + "</code> выполнена успешно"
     | "remove"::x::_ -> db.remove user x; "Отписка от <code>" + x + "</code> выполнена успешно"
     | _              -> "<b>Команды бота:</b>
-• <b>list</b> - список каналов kotlinlang.slack.com на которые вы подписанны
+• <b>list</b> - список каналов kotlinlang.slack.com на которые вы подписаны
 • <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
 • <b>remove</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)"
 
