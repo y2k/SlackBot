@@ -7,7 +7,6 @@ module Messengers =
     open System.IO
     open System.Net
     open System.Net.Http
-    open System.Reactive.Linq
     open Newtonsoft.Json
     open Telegram.Bot
     
