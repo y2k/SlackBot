@@ -21,7 +21,7 @@ module Messengers =
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
 
-    type UserResponse = { user_id: string; name: string }
+    type UserResponse = { user_id: string; name: string; ts: double }
     type RelatedResponse = { users: Dictionary<string, UserResponse> }
     type MessagesResponse = { messages: SlackMessage[]; related: RelatedResponse }
     let getSlackMessages (channelId: string) =
