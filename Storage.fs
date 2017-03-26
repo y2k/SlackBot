@@ -14,7 +14,7 @@ module Storage =
         let db = new SqliteConnection("DataSource=main.db")
         db.Execute("
             create table if not exists channels (id TEXT, user TEXT);
-            create table if not exists offsets (id INTEGER, ts NUMBER);") |> ignore
+            create table if not exists offsets (id INTEGER, ts TEXT);") |> ignore
         db)
 
     let private querySql<'T> sql args = connection.Value.Query<'T>(format sql args) |> Seq.toList

@@ -51,10 +51,13 @@ let main argv =
             bot.getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
         |> flatMap (fun ch -> 
-            let msgs = bot.getSlackMessages ch.channel_id
-                       |> List.takeWhile (fun x -> false)
+            let channelOffset = db.getOffsetWith ch.name |> Option.defaultValue "0"
+            let newMessages = bot.getSlackMessages ch.channel_id
+                              |> List.takeWhile (fun x -> x.ts <> channelOffset)
+            newMessages |> List.tryPick (fun x -> Some x.ts) 
+                        |> Option.map (fun x -> db.setOffsetWith ch.name x) |> ignore
             db.getUsersForChannel ch.name 
-                |> List.map (fun tid -> (tid, ch.name, msgs))
+                |> List.map (fun tid -> (tid, ch.name, newMessages))
                 |> (fun x -> x.ToObservable()))
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> Observable.subscribe (fun (tid, chName, msgs) -> 
