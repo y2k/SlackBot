@@ -25,22 +25,14 @@ System.Reactive.Linq.Observable.Timer(System.TimeSpan.Zero, System.TimeSpan.From
 |> ignore
 *)
 
-let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
-
-let parseMessage (message: string) = 
+let parseMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
-    | "list"::_      -> List
-    | "add"::x::_    -> Add x
-    | "remove"::x::_ -> Remove x
-    | _              -> Help
-
-let executeCommand (user: User) = function
-    | List     -> query user |> List.map (fun x -> x.id) 
-                             |> List.reduce (fun a x -> a + ", " + x) 
-                             |> (+) "Your channels: "
-    | Add x    -> add user x; "completed"
-    | Remove x -> remove user x; "completed"
-    | Help     -> "Commands: list, add <channel>, remove <channel>"
+    | "list"::_      -> query user |> List.map (fun x -> x.id) 
+                                   |> List.reduce (fun a x -> a + ", " + x) 
+                                   |> (+) "Your channels: "
+    | "add"::x::_    -> add user x; "completed"
+    | "remove"::x::_ -> remove user x; "completed"
+    | _              -> "Commands: list, add <channel>, remove <channel>"
 
 [<EntryPoint>]
 let main argv =
@@ -49,7 +41,7 @@ let main argv =
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
         |> Observable.map (fun _ -> getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
-        |> Observable.map (fun x -> (x.user, x.text |> parseMessage |> executeCommand x.user))
+        |> Observable.map (fun x -> (x.user, x.text |> parseMessage x.user))
         |> Observable.subscribe (fun (user, response) ->
             sendToTelegramSingle token user response
             printfn "Message = %O" response)
