@@ -67,8 +67,8 @@ let main argv =
                 |> (fun x -> x.ToObservable()))
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> Observable.subscribe (fun (tid, chName, msgs) -> 
-            msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n" + a) ""
-                 |> ((+) ("=== New pots from " + chName.ToUpper() + " ===\n\n"))
+            msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n\n" + a) ""
+                 |> ((+) ("=== New messages from " + chName.ToUpper() + " ===\n\n"))
                  |> sendToTelegramSingle token tid)
         |> ignore
     
