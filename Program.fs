@@ -28,7 +28,7 @@ let parseMessage (user: User) (message: string) =
     | "list"::_      -> db.query user |> List.map (fun x -> "<code>" + x.id + "</code>")
                                       |> List.reduce (fun a x -> a + ", " + x)
                                       |> (+) "Каналы на которые вы подписанны: "
-    | "add"::x::_    -> db.add user x; "Подписка на <code>" + x + "</code> выполненно успешно"
+    | "add"::x::_    -> db.add user x; "Подписка на <code>" + x + "</code> выполнена успешно"
     | "remove"::x::_ -> db.remove user x; "Отписка от <code>" + x + "</code> выполнена успешно"
     | _              -> "<b>Команды бота:</b>
 • <b>list</b> - список каналов kotlinlang.slack.com на которые вы подписанны
