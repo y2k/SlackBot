@@ -29,9 +29,10 @@ let main argv =
         |> Observable.map (fun _ -> bot.getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
         |> Observable.map (fun x -> (x.user, x.text |> parseMessage x.user))
-        |> Observable.subscribe (fun (user, response) ->
+        |> Observable.map (fun (user, response) ->
             printfn "Message = %O" response
             bot.sendToTelegramSingle token user Styled response)
+        |> (fun o -> o.Subscribe(DefaultErrorHandler()))
         |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
@@ -53,10 +54,7 @@ let main argv =
             msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
                  |> ((+) ("<b>=== Новые сообщения в канале " + chName.ToUpper() + " ===</b>\n\n"))
                  |> bot.sendToTelegramSingle token tid Styled)
-        |> (fun o -> o.Subscribe({ new IObserver<unit> with
-                                    member this.OnError(e) = printfn "Error = %O" e
-                                    member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
-                                    member this.OnCompleted() = () } ))
+        |> (fun o -> o.Subscribe(DefaultErrorHandler()))
         |> ignore
     
     printfn "listening for slack updates..."
