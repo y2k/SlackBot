@@ -54,7 +54,7 @@ let main argv =
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> Observable.map (fun (tid, chName, msgs) -> 
             msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
-                 |> ((+) ("<b>=== Новые сообщения в канале " + chName.ToUpper() + " ===</b>\n\n"))
+                 |> ((+) ("<b>| Новые сообщения в канале " + chName.ToUpper() + " |</b>\n\n"))
                  |> bot.sendToTelegramSingle token tid Styled)
         |> (fun o -> o.Subscribe(DefaultErrorHandler()))
         |> ignore
