@@ -7,6 +7,7 @@ open SlackToTelegram.Utils
 
 module bot = SlackToTelegram.Messengers
 module db  = SlackToTelegram.Storage
+module o   = Observable
 
 let parseMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
@@ -28,17 +29,14 @@ let main argv =
     let token = argv.[0]
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
-        |> Observable.map (fun _ -> bot.getNewBotMessages token)
+        |> o.map (fun _ -> bot.getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
-        |> Observable.map (fun x -> (x.user, x.text |> parseMessage x.user))
-        |> Observable.map (fun (user, response) ->
-            printfn "Message = %O" response
-            bot.sendToTelegramSingle token user Styled response)
-        |> (fun o -> o.Subscribe(DefaultErrorHandler()))
-        |> ignore
+        |> o.map (fun x -> (x.user, x.text |> parseMessage x.user))
+        |> o.map (fun (user, response) -> bot.sendToTelegramSingle token user Styled response)
+        |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-        |> Observable.map (fun _ -> 
+        |> o.map (fun _ -> 
             let dbChannels = db.getAllChannels ()
             bot.getSlackChannels () |> List.where (fun x -> dbChannels |> List.contains x.name))
         |> flatMap (fun x -> x.ToObservable())
@@ -51,13 +49,12 @@ let main argv =
             db.getUsersForChannel ch.name 
                 |> List.map (fun tid -> (tid, ch.name, newMessages))
                 |> (fun x -> x.ToObservable()))
-        |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
-        |> Observable.map (fun (tid, chName, msgs) -> 
+        |> o.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
+        |> o.map (fun (tid, chName, msgs) -> 
             msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
                  |> (+) ("<b>| Новые сообщения в канале " + chName.ToUpper() + " |</b>\n\n")
                  |> bot.sendToTelegramSingle token tid Styled)
-        |> (fun o -> o.Subscribe(DefaultErrorHandler()))
-        |> ignore
+        |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
     
     printfn "listening for slack updates..."
     Thread.Sleep(-1)
