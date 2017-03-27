@@ -17,8 +17,12 @@ module Storage =
             create table if not exists offsets (id INTEGER, ts TEXT);") |> ignore
         db)
 
-    let private querySql<'T> sql args = connection.Value.Query<'T>(format sql args) |> Seq.toList
-    let private execute sql args = connection.Value.Execute(format sql args) |> ignore
+    let private querySql<'T> sql args = 
+        Operators.lock connection (fun () -> 
+            connection.Value.Query<'T>(format sql args) |> Seq.toList)
+    let private execute sql args = 
+        Operators.lock connection (fun () -> 
+            connection.Value.Execute(format sql args) |> ignore)
 
     let query (user: User) = 
         querySql<Channel> "select * from channels where user = '{0}'" [user]
