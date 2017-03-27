@@ -18,8 +18,11 @@ module Storage =
         db)
 
     let private querySql<'T> sql args = 
-        Operators.lock connection (fun () -> 
-            connection.Value.Query<'T>(format sql args) |> Seq.toList)
+        try 
+            Operators.lock connection (fun () -> 
+                connection.Value.Query<'T>(format sql args) |> Seq.toList)
+        with | _ -> []
+
     let private execute sql args = 
         Operators.lock connection (fun () -> 
             connection.Value.Execute(format sql args) |> ignore)
