@@ -23,7 +23,8 @@ module Messengers =
 
     let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
 
-    type UserResponse = { user_id: string; name: string; ts: double }
+    type ProfileResponse = { real_name: string }
+    type UserResponse = { user_id: string; name: string; profile: ProfileResponse }
     type RelatedResponse = { users: Dictionary<string, UserResponse> }
     type MessagesResponse = { messages: SlackMessage[]; related: RelatedResponse }
     
@@ -32,7 +33,7 @@ module Messengers =
         |> download |> JsonSerializer().Deserialize<MessagesResponse> 
         |> (fun r -> r.messages
                      |> Array.toList 
-                     |> List.map (fun x -> { x with user = r.related.users.[x.user].name }))
+                     |> List.map (fun x -> { x with user = r.related.users.[x.user].profile.real_name }))
 
     type ChannelsResponse = { channels: SlackChannel[] }
     let getSlackChannels () =
