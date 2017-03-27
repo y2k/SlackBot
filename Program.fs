@@ -50,9 +50,9 @@ let main argv =
                 |> (fun x -> x.ToObservable()))
         |> Observable.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> Observable.map (fun (tid, chName, msgs) -> 
-            msgs |> List.fold (fun a x -> "(" + x.user + ") " + WebUtility.HtmlDecode(x.text) + "\n\n" + a) ""
-                 |> ((+) ("=== Новые сообщения в канале " + chName.ToUpper() + " ===\n\n"))
-                 |> bot.sendToTelegramSingle token tid Plane)
+            msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
+                 |> ((+) ("<b>=== Новые сообщения в канале " + chName.ToUpper() + " ===</b>\n\n"))
+                 |> bot.sendToTelegramSingle token tid Styled)
         |> (fun o -> o.Subscribe({ new IObserver<unit> with
                                     member this.OnError(e) = printfn "Error = %O" e
                                     member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
