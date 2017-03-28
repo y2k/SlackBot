@@ -21,4 +21,4 @@ module Utils =
     open System.Reactive.Linq
 
     let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
-    let flatMap (f: 'a -> IObservable<'b>) (o: IObservable<'a>) = o.Select(f).Merge(3)
+    let flatMap (f: 'a -> IObservable<'b>) (o: IObservable<'a>) = o.Select(f).Merge(2)
