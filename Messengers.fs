@@ -3,6 +3,7 @@ namespace SlackToTelegram
 type SlackChannel = { channel_id: string; name: string }
 
 module Messengers =
+    open System
     open System.Collections.Generic
     open System.IO
     open System.Net
@@ -21,7 +22,11 @@ module Messengers =
                           | _ -> ())
         msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = "" })
 
-    let private download (url: string) = HttpClient().GetStringAsync(url).Result |> StringReader |> JsonTextReader
+    let private download (url: string) = 
+        let req = new HttpRequestMessage(HttpMethod.Get, url)
+        req.Headers.Referrer <- Uri("http://kotlinlang.slackarchive.io/")
+        let resp = HttpClient().SendAsync(req).Result
+        resp.Content.ReadAsStringAsync().Result |> StringReader |> JsonTextReader
 
     type ProfileResponse = { real_name: string }
     type UserResponse = { user_id: string; name: string; profile: ProfileResponse }
