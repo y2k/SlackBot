@@ -1,6 +1,7 @@
 namespace SlackToTelegram
 
-type SlackChannel = { channel_id: string; name: string }
+type SlackChannelPurpose = { value: string }
+type SlackChannel = { channel_id: string; name: string; num_members: int; purpose: SlackChannelPurpose }
 
 module Messengers =
     open System
