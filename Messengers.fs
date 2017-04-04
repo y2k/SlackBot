@@ -11,6 +11,7 @@ module Messengers =
     open System.Net.Http
     open Newtonsoft.Json
     open Telegram.Bot
+    open SlackToTelegram.Utils
     
     module db = SlackToTelegram.Storage
 
@@ -39,7 +40,10 @@ module Messengers =
         |> download |> JsonSerializer().Deserialize<MessagesResponse> 
         |> (fun r -> r.messages
                      |> Array.toList 
-                     |> List.map (fun x -> { x with user = r.related.users.[x.user].profile.real_name }))
+                     |> List.map (fun x -> tryGet r.related.users x.user 
+                                           |> Option.map (fun x -> x.profile.real_name) 
+                                           |> Option.defaultValue "Unknown"
+                                           |> (fun name -> { x with user = name })))
 
     type ChannelsResponse = { channels: SlackChannel[] }
     let getSlackChannels () =
