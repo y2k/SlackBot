@@ -9,7 +9,7 @@ module bot = SlackToTelegram.Messengers
 module db  = SlackToTelegram.Storage
 module o   = Observable
 
-let parseMessage (user: User) (message: string) = 
+let handleMessage (user: User) (message: string) = 
     match message.Split(' ') |> Seq.toList with
     | "top"::_    -> bot.getSlackChannels () 
                      |> List.filter (fun x -> x.num_members >= 100)
@@ -38,7 +38,7 @@ let main argv =
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
         |> o.map (fun _ -> bot.getNewBotMessages token)
         |> flatMap (fun x -> x.ToObservable())
-        |> o.map (fun x -> (x.user, x.text |> parseMessage x.user))
+        |> o.map (fun x -> (x.user, x.text |> handleMessage x.user))
         |> o.map (fun (user, response) -> bot.sendToTelegramSingle token user Styled response)
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
 
