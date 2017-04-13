@@ -52,8 +52,11 @@ module Messengers =
         |> (fun x -> x.channels |> Array.toList)
 
     let sendToTelegramSingle (token: Token) (user: User) html message =
-        let bot = TelegramBotClient(token)
-        match html with
-        | Styled  -> bot.SendTextMessageAsync(user, message, parseMode = Types.Enums.ParseMode.Html).Result
-        | Plane -> bot.SendTextMessageAsync(user, message).Result
-        |> ignore
+        try
+            let bot = TelegramBotClient(token)
+            match html with
+            | Styled  -> bot.SendTextMessageAsync(user, message, parseMode = Types.Enums.ParseMode.Html).Result
+            | Plane -> bot.SendTextMessageAsync(user, message).Result
+            |> ignore
+        with
+        | ex -> printfn "Telegram error: %O" ex
