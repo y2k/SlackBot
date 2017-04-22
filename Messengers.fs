@@ -26,7 +26,7 @@ module Messengers =
 
     let private download (url: string) = 
         let req = new HttpRequestMessage(HttpMethod.Get, url)
-        req.Headers.Referrer <- Uri("http://kotlinlang.slackarchive.io/")
+        req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
         let resp = HttpClient().SendAsync(req).Result
         resp.Content.ReadAsStringAsync().Result |> StringReader |> JsonTextReader
 
@@ -36,7 +36,7 @@ module Messengers =
     type MessagesResponse = { messages: SlackMessage[]; related: RelatedResponse }
     
     let getSlackMessages (channelId: string) =
-        "http://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
+        "https://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
         |> download |> JsonSerializer().Deserialize<MessagesResponse> 
         |> (fun r -> r.messages
                      |> Array.toList 
@@ -47,7 +47,7 @@ module Messengers =
 
     type ChannelsResponse = { channels: SlackChannel[] }
     let getSlackChannels () =
-        "http://api.slackarchive.io/v1/channels?team_id=T09229ZC6" 
+        "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6" 
         |> download |> JsonSerializer().Deserialize<ChannelsResponse> 
         |> (fun x -> x.channels |> Array.toList)
 
