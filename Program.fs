@@ -35,9 +35,7 @@ let handleMessage (user: User) (message: string) =
 let main argv =
     let token = argv.[0]
 
-    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5.))
-        |> o.map (fun _ -> bot.getNewBotMessages token)
-        |> flatMap (fun x -> x.ToObservable())
+    bot.getNewBotMessages token
         |> o.map (fun x -> (x.user, x.text |> handleMessage x.user))
         |> o.map (fun (user, response) -> bot.sendToTelegramSingle token user Styled response)
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore

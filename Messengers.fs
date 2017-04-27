@@ -16,13 +16,12 @@ module Messengers =
     module db = SlackToTelegram.Storage
 
     let getNewBotMessages token =
-        let offset = db.getOffsetWith db.TelegramId |> Option.defaultValue "0"
-        let msgs = TelegramBotClient(token).GetUpdatesAsync(int offset).Result |> Array.toList
-        msgs |> List.map (fun x -> x.Id) |> List.sortDescending |> List.tryHead
-             |> (fun x -> match x with 
-                          | Some offset -> db.setOffsetWith db.TelegramId (string (offset + 1)) 
-                          | _ -> ())
-        msgs |> List.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = "" })
+        let bot = TelegramBotClient(token)
+        let result = bot.OnUpdate 
+                     |> Observable.map (fun x -> x.Update)
+                     |> Observable.map (fun x -> { text = x.Message.Text; user = string x.Message.From.Id; ts = "" })
+        bot.StartReceiving()
+        result
 
     let private download (url: string) = 
         let req = new HttpRequestMessage(HttpMethod.Get, url)
