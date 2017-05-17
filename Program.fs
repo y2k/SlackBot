@@ -19,8 +19,8 @@ module Domain =
                         |> List.reduce (fun a x -> a + "\n" + x)
                         |> (+) "<b>Список доступных каналов:</b> \n"
         | "ls"::_     -> match db.query user with
-                        | [] -> "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
-                        | channels -> channels |> List.sortBy (fun x -> x.id)
+                         | [] -> "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
+                         | channels -> channels |> List.sortBy (fun x -> x.id)
                                                 |> List.map (fun x -> "<code>" + x.id + "</code>")
                                                 |> List.reduce (fun a x -> a + ", " + x)
                                                 |> (+) "Каналы на которые вы подписаны: "
