@@ -35,6 +35,10 @@ module Domain =
     let filterChannels (dbChannels, channels) =
         channels |> List.where (fun x -> dbChannels |> List.contains x.name)
 
+    let makeUpdateMessage msgs (chName: string) =
+        msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
+             |> (+) ("<b>| Новые сообщения в канале " + chName.ToUpper() + " |</b>\n\n")
+
 [<EntryPoint>]
 let main argv =
     let token = argv.[0]
@@ -58,10 +62,8 @@ let main argv =
                 |> List.map (fun tid -> (tid, ch.name, newMessages))
                 |> (fun x -> x.ToObservable()))
         |> o.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
-        |> o.map (fun (tid, chName, msgs) -> 
-            msgs |> List.fold (fun a x -> "(<b>" + x.user + "</b>) " + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" + a) ""
-                 |> (+) ("<b>| Новые сообщения в канале " + chName.ToUpper() + " |</b>\n\n")
-                 |> bot.sendToTelegramSingle token tid Styled)
+        |> o.map (fun (tid, chName, msgs) -> (Domain.makeUpdateMessage msgs chName, tid)) 
+        |> o.map (fun (message, tid) -> message |> bot.sendToTelegramSingle token tid Styled)
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
     
     printfn "listening for slack updates..."
