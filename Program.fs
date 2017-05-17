@@ -60,9 +60,9 @@ let main argv =
                         |> Option.map (fun x -> db.setOffsetWith ch.name x) |> ignore
             db.getUsersForChannel ch.name 
             |> List.map (fun tid -> (tid, ch.name, newMessages))
-            |> List.filter (fun (_, _, msgs) -> not msgs.IsEmpty))
+            |> List.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
+            |> List.map (fun (tid, chName, msgs) -> (Domain.makeUpdateMessage msgs chName, tid)))
         |> flatMap (fun x -> x.ToObservable())
-        |> o.map (fun (tid, chName, msgs) -> (Domain.makeUpdateMessage msgs chName, tid)) 
         |> o.map (fun (message, tid) -> message |> bot.sendToTelegramSingle token tid Styled)
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
     
