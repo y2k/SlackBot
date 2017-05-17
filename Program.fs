@@ -52,15 +52,15 @@ let main argv =
         |> o.map (fun _ -> (db.getAllChannels(), bot.getSlackChannels()))
         |> o.map Domain.filterChannels
         |> flatMap (fun x -> x.ToObservable())
-        |> flatMap (fun ch -> 
+        |> o.map (fun ch -> 
             let channelOffset = db.getOffsetWith ch.name |> Option.defaultValue "0"
             let newMessages = bot.getSlackMessages ch.channel_id
                               |> List.takeWhile (fun x -> x.ts <> channelOffset)
             newMessages |> List.tryPick (fun x -> Some x.ts) 
                         |> Option.map (fun x -> db.setOffsetWith ch.name x) |> ignore
             db.getUsersForChannel ch.name 
-                |> List.map (fun tid -> (tid, ch.name, newMessages))
-                |> (fun x -> x.ToObservable()))
+            |> List.map (fun tid -> (tid, ch.name, newMessages)))
+        |> flatMap (fun x -> x.ToObservable())
         |> o.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
         |> o.map (fun (tid, chName, msgs) -> (Domain.makeUpdateMessage msgs chName, tid)) 
         |> o.map (fun (message, tid) -> message |> bot.sendToTelegramSingle token tid Styled)
