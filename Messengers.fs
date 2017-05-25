@@ -50,6 +50,8 @@ module Messengers =
         |> download |> JsonSerializer().Deserialize<ChannelsResponse> 
         |> (fun x -> x.channels |> Array.toList)
 
+    type TelegramResponse = | BotBlockedResponse | OtherResponse
+
     let sendToTelegramSingle (token: Token) (user: User) html message =
         try
             let bot = TelegramBotClient(token)
@@ -58,4 +60,4 @@ module Messengers =
             | Plane -> bot.SendTextMessageAsync(user, message).Result
             |> ignore
         with
-        | ex -> printfn "Telegram error: %O" ex
+        | ex -> printfn "Telegram error: %O" ex.Message
