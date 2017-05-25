@@ -12,7 +12,7 @@ type TextMode = | Plane | Styled
 
 type DefaultErrorHandler() = 
     interface IObserver<unit> with
-        member this.OnError(e) = printfn "Error = %O" e
+        member this.OnError(e) = printfn "Error = %O" e.Message
         member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
         member this.OnCompleted() = ()
 
