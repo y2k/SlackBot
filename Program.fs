@@ -5,27 +5,27 @@ open System.Threading
 open SlackToTelegram
 open SlackToTelegram.Utils
 
-module bot = SlackToTelegram.Messengers
-module db  = SlackToTelegram.Storage
-module o   = Observable
+module Bot = SlackToTelegram.Messengers
+module DB  = SlackToTelegram.Storage
+module RX  = Observable
 
 module Domain =
     let handleMessage (user: User) (message: string) = 
         match message.Split(' ') |> Seq.toList with
-        | "top"::_    -> bot.getSlackChannels () 
-                        |> List.filter (fun x -> x.num_members >= 100)
-                        |> List.sortByDescending (fun x -> x.num_members)
-                        |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose.value) 
-                        |> List.reduce (fun a x -> a + "\n" + x)
-                        |> (+) "<b>Список доступных каналов:</b> \n"
-        | "ls"::_     -> match db.query user with
+        | "top"::_    -> Bot.getSlackChannels () 
+                         |> List.filter (fun x -> x.num_members >= 100)
+                         |> List.sortByDescending (fun x -> x.num_members)
+                         |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose.value) 
+                         |> List.reduce (fun a x -> a + "\n" + x)
+                         |> (+) "<b>Список доступных каналов:</b> \n"
+        | "ls"::_     -> match DB.query user with
                          | [] -> "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
                          | channels -> channels |> List.sortBy (fun x -> x.id)
                                                 |> List.map (fun x -> "<code>" + x.id + "</code>")
                                                 |> List.reduce (fun a x -> a + ", " + x)
                                                 |> (+) "Каналы на которые вы подписаны: "
-        | "add"::x::_ -> db.add user x; "Подписка на <code>" + x + "</code> выполнена успешно"
-        | "rm"::x::_  -> db.remove user x; "Отписка от <code>" + x + "</code> выполнена успешно"
+        | "add"::x::_ -> DB.add user x; "Подписка на <code>" + x + "</code> выполнена успешно"
+        | "rm"::x::_  -> DB.remove user x; "Отписка от <code>" + x + "</code> выполнена успешно"
         | _           -> "<b>Команды бота:</b>
     • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
     • <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
@@ -43,27 +43,30 @@ module Domain =
 let main argv =
     let token = argv.[0]
 
-    bot.getNewBotMessages token
-        |> o.map (fun x -> (x.user, x.text |> Domain.handleMessage x.user))
-        |> o.map (fun (user, response) -> bot.sendToTelegramSingle token user Styled response)
+    Bot.getNewBotMessages token
+        |> RX.map (fun x -> (x.user, x.text |> Domain.handleMessage x.user))
+        |> RX.map (fun (user, response) -> Bot.sendToTelegramSingle token user Styled response |> ignore)
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
 
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-        |> o.map (fun _ -> (db.getAllChannels(), bot.getSlackChannels()))
-        |> o.map Domain.filterChannels
+        |> RX.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
+        |> RX.map Domain.filterChannels
         |> flatMap (fun x -> x.ToObservable())
-        |> o.map (fun ch -> 
-            let channelOffset = db.getOffsetWith ch.name |> Option.defaultValue "0"
-            let newMessages = bot.getSlackMessages ch.channel_id
+        |> RX.map (fun ch -> 
+            let channelOffset = DB.getOffsetWith ch.name |> Option.defaultValue "0"
+            let newMessages = Bot.getSlackMessages ch.channel_id
                               |> List.takeWhile (fun x -> x.ts <> channelOffset)
             newMessages |> List.tryPick (fun x -> Some x.ts) 
-                        |> Option.map (fun x -> db.setOffsetWith ch.name x) |> ignore
-            db.getUsersForChannel ch.name 
+                        |> Option.map (fun x -> DB.setOffsetWith ch.name x) |> ignore
+            DB.getUsersForChannel ch.name 
             |> List.map (fun tid -> (tid, ch.name, newMessages))
             |> List.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
             |> List.map (fun (tid, chName, msgs) -> (Domain.makeUpdateMessage msgs chName, tid)))
         |> flatMap (fun x -> x.ToObservable())
-        |> o.map (fun (message, tid) -> message |> bot.sendToTelegramSingle token tid Styled)
+        |> RX.map (fun (message, tid) -> (tid, message |> Bot.sendToTelegramSingle token tid Styled))
+        |> RX.map (fun (tid, x) -> match x with
+                                   | Bot.BotBlockedResponse -> DB.removeChannelsForUser tid
+                                   | _ -> ())
         |> (fun o -> o.Subscribe(DefaultErrorHandler())) |> ignore
     
     printfn "listening for slack updates..."

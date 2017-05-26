@@ -50,14 +50,21 @@ module Messengers =
         |> download |> JsonSerializer().Deserialize<ChannelsResponse> 
         |> (fun x -> x.channels |> Array.toList)
 
-    type TelegramResponse = | BotBlockedResponse | OtherResponse
+    type TelegramResponse = | SuccessResponse | BotBlockedResponse | UnknownErrorResponse
 
     let sendToTelegramSingle (token: Token) (user: User) html message =
         try
             let bot = TelegramBotClient(token)
             match html with
             | Styled  -> bot.SendTextMessageAsync(user, message, parseMode = Types.Enums.ParseMode.Html).Result
-            | Plane -> bot.SendTextMessageAsync(user, message).Result
+            | Plane   -> bot.SendTextMessageAsync(user, message).Result
             |> ignore
+            SuccessResponse
         with
+        | :? AggregateException as ae -> 
+            printfn "Telegram aggregate error: %O" ae.InnerException.Message
+            match ae.InnerException with
+            | :? Telegram.Bot.Exceptions.ApiRequestException -> BotBlockedResponse
+            | _                                              -> UnknownErrorResponse
         | ex -> printfn "Telegram error: %O" ex.Message
+                UnknownErrorResponse
