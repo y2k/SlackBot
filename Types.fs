@@ -2,6 +2,13 @@ namespace SlackToTelegram
 
 open System
 
+type Command = 
+    | Top
+    | Ls
+    | Add of string
+    | Rm of string
+    | Unknow
+
 type TelegramOffset = string
 
 type User = string

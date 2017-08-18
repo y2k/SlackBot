@@ -32,17 +32,25 @@ module Domain =
             |> List.reduce (fun a x -> a + ", " + x)
             |> (+) "Каналы на которые вы подписаны: "
     
+    let parseCommand (command : string) = 
+        match command.Split(' ') |> Seq.toList with
+        | "top" :: _ -> Top
+        | "ls" :: _ -> Ls
+        | "add" :: x :: _ -> Add x
+        | "rm" :: x :: _ -> Rm x
+        | _ -> Unknow
+    
     let handleMessage (user : User) (message : string) = 
-        match message.Split(' ') |> Seq.toList with
-        | "top" :: _ -> Bot.getSlackChannels() |> makeMessageForTopChannels
-        | "ls" :: _ -> DB.query user |> makeMessageFromUserChannels
-        | "add" :: x :: _ -> 
+        match parseCommand message with
+        | Top -> Bot.getSlackChannels() |> makeMessageForTopChannels
+        | Ls -> DB.query user |> makeMessageFromUserChannels
+        | Add x -> 
             DB.add user x
             "Подписка на <code>" + x + "</code> выполнена успешно"
-        | "rm" :: x :: _ -> 
+        | Rm x -> 
             DB.remove user x
             "Отписка от <code>" + x + "</code> выполнена успешно"
-        | _ -> 
+        | Unknow -> 
             "<b>Команды бота:</b>
     • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
     • <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
@@ -66,13 +74,7 @@ module Domain =
 [<EntryPoint>]
 let main argv = 
     let token = argv.[0]
-    Bot.getNewBotMessages token
-    |> RX.map (fun x -> (x.user, x.text |> Domain.handleMessage x.user))
-    |> RX.map 
-           (fun (user, response) -> 
-           Bot.sendToTelegramSingle token user Styled response |> ignore)
-    |> (fun o -> o.Subscribe(DefaultErrorHandler()))
-    |> ignore
+    Bot.repl token Domain.handleMessage
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
     |> RX.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
     |> RX.map Domain.filterChannels
