@@ -36,6 +36,40 @@ type DefaultErrorHandler() =
         member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
         member this.OnCompleted() = ()
 
+module Observable = 
+    open System.Reactive.Linq
+    
+    let flatMap (f : 'a -> IObservable<'b>) (o : IObservable<'a>) = 
+        o.Select(f).Merge(3)
+
+module Infrastructure = 
+    open System.IO
+    open System.Net.Http
+    open Newtonsoft.Json
+    
+    let private httpClient = new HttpClient()
+    
+    let download<'a> (url : string) = 
+        let req = new HttpRequestMessage(HttpMethod.Get, url)
+        req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
+        let resp = httpClient.SendAsync(req).Result
+        resp.Content.ReadAsStringAsync().Result
+        |> StringReader
+        |> JsonTextReader
+        |> JsonSerializer().Deserialize<'a>
+    
+    let downloadAsync<'a> (url : string) = 
+        async { 
+            let req = new HttpRequestMessage(HttpMethod.Get, url)
+            req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
+            let! resp = httpClient.SendAsync(req) |> Async.AwaitTask
+            let! content = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+            return content
+                   |> StringReader
+                   |> JsonTextReader
+                   |> JsonSerializer().Deserialize<'a>
+        }
+
 module Utils = 
     open System
     open System.Collections.Generic

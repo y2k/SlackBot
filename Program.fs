@@ -7,7 +7,6 @@ open SlackToTelegram.Utils
 
 module Bot = SlackToTelegram.Messengers
 module DB = SlackToTelegram.Storage
-module RX = Observable
 
 module Domain = 
     let makeMessageForTopChannels channels = 
@@ -75,10 +74,10 @@ let main argv =
     let token = argv.[0]
     Bot.repl token Domain.handleMessage
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-    |> RX.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
-    |> RX.map Domain.filterChannels
-    |> flatMap (fun x -> x.ToObservable())
-    |> RX.map 
+    |> Observable.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
+    |> Observable.map Domain.filterChannels
+    |> Observable.flatMap (fun x -> x.ToObservable())
+    |> Observable.map 
            (fun ch -> 
            let channelOffset = 
                DB.getOffsetWith ch.name |> Option.defaultValue "0"
@@ -96,10 +95,10 @@ let main argv =
                   (fun (tid, chName, msgs) -> 
                   (Domain.makeUpdateMessage msgs chName, tid)))
     |> flatMap (fun x -> x.ToObservable())
-    |> RX.map 
+    |> Observable.map 
            (fun (message, tid) -> 
            (tid, message |> Bot.sendToTelegramSingle token tid Styled))
-    |> RX.map (fun (tid, x) -> 
+    |> Observable.map (fun (tid, x) -> 
            match x with
            | Bot.BotBlockedResponse -> DB.removeChannelsForUser tid
            | _ -> ())

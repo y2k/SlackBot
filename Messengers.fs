@@ -20,6 +20,7 @@ module Messengers =
     open Telegram.Bot.Types
     open SlackToTelegram.Utils
     
+    module I = Infrastructure
     module db = SlackToTelegram.Storage
     
     let getNewBotMessages token = 
@@ -35,13 +36,14 @@ module Messengers =
         bot.StartReceiving()
         result
     
-    let private download (url : string) = 
+    let private downloadJson<'a> (url : string) = 
         let req = new HttpRequestMessage(HttpMethod.Get, url)
         req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
         let resp = HttpClient().SendAsync(req).Result
         resp.Content.ReadAsStringAsync().Result
         |> StringReader
         |> JsonTextReader
+        |> JsonSerializer().Deserialize<'a>
     
     type ProfileResponse = 
         { real_name : string }
@@ -60,8 +62,7 @@ module Messengers =
     
     let getSlackMessages (channelId : string) = 
         "https://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
-        |> download
-        |> JsonSerializer().Deserialize<MessagesResponse>
+        |> I.download<MessagesResponse>
         |> (fun r -> 
         r.messages
         |> Array.toList
@@ -69,16 +70,15 @@ module Messengers =
                tryGet r.related.users x.user
                |> Option.map (fun x -> x.profile.real_name)
                |> Option.defaultValue "Unknown"
-               |> (fun name -> { x with user = name })))
+               |> fun name -> { x with user = name }))
     
     type ChannelsResponse = 
         { channels : SlackChannel [] }
     
     let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
-        |> download
-        |> JsonSerializer().Deserialize<ChannelsResponse>
-        |> (fun x -> x.channels |> Array.toList)
+        |> I.download<ChannelsResponse>
+        |> fun x -> x.channels |> Array.toList
     
     type TelegramResponse = 
         | SuccessResponse
@@ -91,7 +91,8 @@ module Messengers =
             let userId = user |> ChatId.op_Implicit
             match html with
             | Styled -> 
-                bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
+                bot.SendTextMessageAsync
+                    (userId, message, parseMode = Types.Enums.ParseMode.Html).Result
             | Plane -> bot.SendTextMessageAsync(userId, message).Result
             |> ignore
             SuccessResponse
@@ -105,7 +106,7 @@ module Messengers =
         | ex -> 
             printfn "Telegram error: %O" ex.Message
             UnknownErrorResponse
-
+    
     let repl token callback = 
         getNewBotMessages token
         |> Observable.map (fun x -> 
