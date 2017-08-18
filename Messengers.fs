@@ -94,8 +94,7 @@ module Messengers =
             let userId = user |> ChatId.op_Implicit
             match html with
             | Styled -> 
-                bot.SendTextMessageAsync
-                    (userId, message, parseMode = Types.Enums.ParseMode.Html).Result
+                bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
             | Plane -> bot.SendTextMessageAsync(userId, message).Result
             |> ignore
             SuccessResponse
@@ -110,10 +109,21 @@ module Messengers =
             printfn "Telegram error: %O" ex.Message
             UnknownErrorResponse
     
+    [<Obsolete>]
     let repl token callback = 
         getNewBotMessages token
         |> Observable.map (fun x -> 
                let (user, response) = x.user, x.text |> callback x.user
                sendToTelegramSingle token user Styled response |> ignore)
-        |> (fun o -> o.Subscribe(DefaultErrorHandler()))
+        |> fun o -> o.Subscribe(DefaultErrorHandler())
+        |> ignore
+    
+    let repl' token callback = 
+        getNewBotMessages token
+        |> Observable.flatMapTask 
+               (fun x -> 
+               async 
+                   { let! response = callback x.user x.text
+                     sendToTelegramSingle token x.user Styled response |> ignore })
+        |> fun o -> o.Subscribe(DefaultErrorHandler())
         |> ignore

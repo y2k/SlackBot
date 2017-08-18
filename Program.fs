@@ -41,20 +41,26 @@ module Domain =
     
     let handleMessage (user : User) (message : string) = 
         match parseCommand message with
-        | Top -> Bot.getSlackChannels() |> makeMessageForTopChannels
-        | Ls -> DB.query user |> makeMessageFromUserChannels
+        | Top -> Bot.getSlackChannels'() |> Async.map makeMessageForTopChannels
+        | Ls -> 
+            DB.query user
+            |> makeMessageFromUserChannels
+            |> async.Return
         | Add x -> 
             DB.add user x
-            "Подписка на <code>" + x + "</code> выполнена успешно"
+            "Подписка на <code>" + x + "</code> выполнена успешно" 
+            |> async.Return
         | Rm x -> 
             DB.remove user x
-            "Отписка от <code>" + x + "</code> выполнена успешно"
+            "Отписка от <code>" + x + "</code> выполнена успешно" 
+            |> async.Return
         | Unknow -> 
             "<b>Команды бота:</b>
     • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
     • <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
     • <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
-    • <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)"
+    • <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)" 
+            |> async.Return
     
     let filterChannels (dbChannels, channels) = 
         channels |> List.where (fun x -> dbChannels |> List.contains x.name)
@@ -72,7 +78,7 @@ module Domain =
 [<EntryPoint>]
 let main argv = 
     let token = argv.[0]
-    Bot.repl token Domain.handleMessage
+    Bot.repl' token Domain.handleMessage
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
     |> Observable.ignore
     |> Observable.flatMapTask Bot.getSlackChannels'
