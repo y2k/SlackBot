@@ -10,7 +10,7 @@ module DB = SlackToTelegram.Storage
 module RX = Observable
 
 module Domain = 
-    let slackChannelsToMessage channels = 
+    let makeMessageForTopChannels channels = 
         channels
         |> List.filter (fun x -> x.num_members >= 100)
         |> List.sortByDescending (fun x -> x.num_members)
@@ -21,19 +21,21 @@ module Domain =
         |> List.reduce (fun a x -> a + "\n" + x)
         |> (+) "<b>Список доступных каналов:</b> \n"
     
+    let makeMessageFromUserChannels = 
+        function 
+        | [] -> 
+            "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
+        | channels -> 
+            channels
+            |> List.sortBy (fun x -> x.id)
+            |> List.map (fun x -> "<code>" + x.id + "</code>")
+            |> List.reduce (fun a x -> a + ", " + x)
+            |> (+) "Каналы на которые вы подписаны: "
+    
     let handleMessage (user : User) (message : string) = 
         match message.Split(' ') |> Seq.toList with
-        | "top" :: _ -> Bot.getSlackChannels() |> slackChannelsToMessage
-        | "ls" :: _ -> 
-            match DB.query user with
-            | [] -> 
-                "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
-            | channels -> 
-                channels
-                |> List.sortBy (fun x -> x.id)
-                |> List.map (fun x -> "<code>" + x.id + "</code>")
-                |> List.reduce (fun a x -> a + ", " + x)
-                |> (+) "Каналы на которые вы подписаны: "
+        | "top" :: _ -> Bot.getSlackChannels() |> makeMessageForTopChannels
+        | "ls" :: _ -> DB.query user |> makeMessageFromUserChannels
         | "add" :: x :: _ -> 
             DB.add user x
             "Подписка на <code>" + x + "</code> выполнена успешно"
@@ -71,7 +73,6 @@ let main argv =
            Bot.sendToTelegramSingle token user Styled response |> ignore)
     |> (fun o -> o.Subscribe(DefaultErrorHandler()))
     |> ignore
-
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
     |> RX.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
     |> RX.map Domain.filterChannels
