@@ -74,7 +74,9 @@ let main argv =
     let token = argv.[0]
     Bot.repl token Domain.handleMessage
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-    |> Observable.map (fun _ -> (DB.getAllChannels(), Bot.getSlackChannels()))
+    |> Observable.ignore
+    |> Observable.flatMapTask Bot.getSlackChannels'
+    |> Observable.map (fun slackChannels -> DB.getAllChannels(), slackChannels)
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
     |> Observable.map 

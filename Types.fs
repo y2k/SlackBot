@@ -41,6 +41,16 @@ module Observable =
     
     let flatMap (f : 'a -> IObservable<'b>) (o : IObservable<'a>) = 
         o.Select(f).Merge(3)
+    
+    let flatMapTask (f : 'a -> Async<'b>) (o : IObservable<'a>) = 
+        let action x = f x |> Async.StartAsTask
+        o.SelectMany action
+    
+    let ignore (o : IObservable<'a>) = o.Select(fun _ -> ())
+
+module Async = 
+    let map f a = async { let! r = a
+                          return f r }
 
 module Infrastructure = 
     open System.IO

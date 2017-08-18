@@ -75,10 +75,13 @@ module Messengers =
     type ChannelsResponse = 
         { channels : SlackChannel [] }
     
-    let getSlackChannels() = 
+    let getSlackChannels'() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
-        |> I.download<ChannelsResponse>
-        |> fun x -> x.channels |> Array.toList
+        |> I.downloadAsync<ChannelsResponse>
+        |> Async.map (fun x -> x.channels |> Array.toList)
+    
+    [<Obsolete>]
+    let getSlackChannels = getSlackChannels' >> Async.RunSynchronously
     
     type TelegramResponse = 
         | SuccessResponse
