@@ -10,14 +10,18 @@ module DB  = SlackToTelegram.Storage
 module RX  = Observable
 
 module Domain =
+    let slackChannelsToMessage channels = 
+        channels
+        |> List.filter (fun x -> x.num_members >= 100)
+        |> List.sortByDescending (fun x -> x.num_members)
+        |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose.value) 
+        |> List.reduce (fun a x -> a + "\n" + x)
+        |> (+) "<b>Список доступных каналов:</b> \n"
+
     let handleMessage (user: User) (message: string) = 
         match message.Split(' ') |> Seq.toList with
         | "top"::_    -> Bot.getSlackChannels () 
-                         |> List.filter (fun x -> x.num_members >= 100)
-                         |> List.sortByDescending (fun x -> x.num_members)
-                         |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose.value) 
-                         |> List.reduce (fun a x -> a + "\n" + x)
-                         |> (+) "<b>Список доступных каналов:</b> \n"
+                         |> slackChannelsToMessage
         | "ls"::_     -> match DB.query user with
                          | [] -> "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
                          | channels -> channels |> List.sortBy (fun x -> x.id)
