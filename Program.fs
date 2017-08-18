@@ -67,9 +67,8 @@ module Domain =
                "(<b>" + x.user + "</b>) " 
                + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
                + a) ""
-        |> (+) 
-               ("<b>| Новые сообщения в канале " + chName.ToUpper() 
-                + " |</b>\n\n")
+        |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
+               (chName.ToUpper())
 
 [<EntryPoint>]
 let main argv = 
