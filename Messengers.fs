@@ -11,6 +11,7 @@ module Messengers =
     open System.Net.Http
     open Newtonsoft.Json
     open Telegram.Bot
+    open Telegram.Bot.Types
     open SlackToTelegram.Utils
     
     module db = SlackToTelegram.Storage
@@ -52,12 +53,13 @@ module Messengers =
 
     type TelegramResponse = | SuccessResponse | BotBlockedResponse | UnknownErrorResponse
 
-    let sendToTelegramSingle (token: Token) (user: User) html message =
+    let sendToTelegramSingle (token: Token) (user: string) html message =
         try
             let bot = TelegramBotClient(token)
+            let userId = user |> ChatId.op_Implicit
             match html with
-            | Styled  -> bot.SendTextMessageAsync(user, message, parseMode = Types.Enums.ParseMode.Html).Result
-            | Plane   -> bot.SendTextMessageAsync(user, message).Result
+            | Styled  -> bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
+            | Plane   -> bot.SendTextMessageAsync(userId, message).Result
             |> ignore
             SuccessResponse
         with
