@@ -56,11 +56,10 @@ module Domain =
         let channelOffset = offset |> Option.defaultValue "0"
         slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
     
-    let todoMethod usersForChannel ch newMessages = 
+    let makeTelegramMessageAboutUpdates usersForChannel ch newMessages = 
         usersForChannel
-        |> List.map (fun tid -> tid, newMessages)
-        |> List.filter (fun (_, msgs) -> List.isEmpty msgs |> not)
-        |> List.map (fun (tid, msgs) -> (makeUpdateMessage msgs ch.name, tid))
+        |> List.filter (fun _ -> List.isEmpty newMessages |> not)
+        |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
 
 let handleTelegramCommand (user : User) (message : string) = 
     match Domain.parseCommand message with
@@ -109,7 +108,7 @@ let main argv =
            |> Option.map (fun x -> DB.setOffsetWith ch.name x)
            |> ignore
            let usersForChannel = DB.getUsersForChannel ch.name
-           Domain.todoMethod usersForChannel ch newMessages)
+           Domain.makeTelegramMessageAboutUpdates usersForChannel ch newMessages)
     |> flatMap (fun x -> x.ToObservable())
     |> Observable.flatMapTask (fun (message, tid) -> 
            message
