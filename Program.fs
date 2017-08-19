@@ -62,7 +62,7 @@ module Domain =
         |> List.filter (fun _ -> List.isEmpty newMessages |> not)
         |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
     
-    let extractNewSnapshotsWithOffset (ch, slackMessages, offset, usersForChannel) = 
+    let toUpdateNotificationWithOffset (ch, slackMessages, offset, usersForChannel) = 
         let newMessages = limitMessagesToOffset offset slackMessages
         let newOffset = newMessages |> List.tryPick (fun x -> Some x.ts)
         let msgs = 
@@ -120,7 +120,7 @@ let main argv =
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
     |> Observable.flatMapTask loadChannelUpdates
-    |> Observable.map Domain.extractNewSnapshotsWithOffset
+    |> Observable.map Domain.toUpdateNotificationWithOffset
     |> Observable.flatMapTask (saveUpdates token)
     |> fun o -> o.Subscribe(DefaultErrorHandler())
     |> ignore
