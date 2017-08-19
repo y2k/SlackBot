@@ -77,41 +77,39 @@ module Messengers =
         | UnknownErrorResponse
     
     let sendToTelegramSingle (token : Token) (user : string) html message = 
-        try 
-            let bot = TelegramBotClient(token)
-            let userId = user |> ChatId.op_Implicit
-            match html with
-            | Styled -> 
-                bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
-            | Plane -> bot.SendTextMessageAsync(userId, message).Result
-            |> ignore
-            SuccessResponse
-        with
-        | :? AggregateException as ae -> 
-            printfn "Telegram aggregate error: %O" ae.InnerException.Message
-            match ae.InnerException with
-            | :? Telegram.Bot.Exceptions.ApiRequestException -> 
-                BotBlockedResponse
-            | _ -> UnknownErrorResponse
-        | ex -> 
-            printfn "Telegram error: %O" ex.Message
-            UnknownErrorResponse
-    
-    [<Obsolete>]
-    let repl token callback = 
-        getNewBotMessages token
-        |> Observable.map (fun x -> 
-               let (user, response) = x.user, x.text |> callback x.user
-               sendToTelegramSingle token user Styled response |> ignore)
-        |> fun o -> o.Subscribe(DefaultErrorHandler())
-        |> ignore
+        async { 
+            try 
+                let bot = TelegramBotClient(token)
+                let userId = user |> ChatId.op_Implicit
+                do! match html with
+                    | Styled -> 
+                        bot.SendTextMessageAsync
+                            (userId, message, 
+                             parseMode = Types.Enums.ParseMode.Html)
+                    | Plane -> bot.SendTextMessageAsync(userId, message)
+                    |> Async.AwaitTask
+                    |> Async.Ignore
+                return SuccessResponse
+            with
+            | :? AggregateException as ae -> 
+                printfn "Telegram aggregate error: %O" ae.InnerException.Message
+                match ae.InnerException with
+                | :? Telegram.Bot.Exceptions.ApiRequestException -> 
+                    return BotBlockedResponse
+                | _ -> return UnknownErrorResponse
+            | ex -> 
+                printfn "Telegram error: %O" ex.Message
+                return UnknownErrorResponse
+        }
     
     let repl' token callback = 
         getNewBotMessages token
         |> Observable.flatMapTask 
                (fun x -> 
                async 
-                   { let! response = callback x.user x.text
-                     sendToTelegramSingle token x.user Styled response |> ignore })
+                   { 
+                   let! response = callback x.user x.text
+                   do! sendToTelegramSingle token x.user Styled response 
+                       |> Async.Ignore })
         |> fun o -> o.Subscribe(DefaultErrorHandler())
         |> ignore

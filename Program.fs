@@ -111,9 +111,10 @@ let main argv =
            let usersForChannel = DB.getUsersForChannel ch.name
            Domain.todoMethod usersForChannel ch newMessages)
     |> flatMap (fun x -> x.ToObservable())
-    |> Observable.map 
-           (fun (message, tid) -> 
-           (tid, message |> Bot.sendToTelegramSingle token tid Styled))
+    |> Observable.flatMapTask (fun (message, tid) -> 
+           message
+           |> Bot.sendToTelegramSingle token tid Styled
+           |> Async.map (fun x -> tid, x))
     |> Observable.flatMapTask (fun (tid, x) -> 
            match x with
            | Bot.BotBlockedResponse -> DB.removeChannelsForUser tid
