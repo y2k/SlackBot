@@ -83,13 +83,16 @@ let main argv =
     |> Observable.map (fun slackChannels -> DB.getAllChannels(), slackChannels)
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
-    |> Observable.map 
+    |> Observable.flatMapTask 
            (fun ch -> 
+           Bot.getSlackMessages ch.channel_id 
+           |> Async.map (fun slackMessages -> ch, slackMessages))
+    |> Observable.map 
+           (fun (ch, slackMessages) -> 
            let channelOffset = 
                DB.getOffsetWith ch.name |> Option.defaultValue "0"
            let newMessages = 
-               Bot.getSlackMessages ch.channel_id 
-               |> List.takeWhile (fun x -> x.ts <> channelOffset)
+               slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
            newMessages
            |> List.tryPick (fun x -> Some x.ts)
            |> Option.map (fun x -> DB.setOffsetWith ch.name x)

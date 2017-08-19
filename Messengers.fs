@@ -35,7 +35,7 @@ module Messengers =
                      ts = "" })
         bot.StartReceiving()
         result
-
+    
     type ProfileResponse = 
         { real_name : string }
     
@@ -54,23 +54,23 @@ module Messengers =
     let getSlackMessages (channelId : string) = 
         "https://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
         |> I.download<MessagesResponse>
-        |> (fun r -> 
-        r.messages
-        |> Array.toList
-        |> List.map (fun x -> 
-               tryGet r.related.users x.user
-               |> Option.map (fun x -> x.profile.real_name)
-               |> Option.defaultValue "Unknown"
-               |> fun name -> { x with user = name }))
+        |> Async.map (fun r -> 
+               r.messages
+               |> Array.toList
+               |> List.map (fun x -> 
+                      tryGet r.related.users x.user
+                      |> Option.map (fun x -> x.profile.real_name)
+                      |> Option.defaultValue "Unknown"
+                      |> fun name -> { x with user = name }))
     
     type ChannelsResponse = 
         { channels : SlackChannel [] }
     
     let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
-        |> I.downloadAsync<ChannelsResponse>
+        |> I.download<ChannelsResponse>
         |> Async.map (fun x -> x.channels |> Array.toList)
-
+    
     type TelegramResponse = 
         | SuccessResponse
         | BotBlockedResponse
@@ -82,7 +82,8 @@ module Messengers =
             let userId = user |> ChatId.op_Implicit
             match html with
             | Styled -> 
-                bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
+                bot.SendTextMessageAsync
+                    (userId, message, parseMode = Types.Enums.ParseMode.Html).Result
             | Plane -> bot.SendTextMessageAsync(userId, message).Result
             |> ignore
             SuccessResponse

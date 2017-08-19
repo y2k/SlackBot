@@ -61,7 +61,7 @@ module Infrastructure =
     
     let private httpClient = new HttpClient()
 
-    let downloadAsync<'a> (url : string) = 
+    let download<'a> (url : string) = 
         async { 
             let req = new HttpRequestMessage(HttpMethod.Get, url)
             req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
@@ -72,10 +72,6 @@ module Infrastructure =
                    |> JsonTextReader
                    |> JsonSerializer().Deserialize<'a>
         }
-
-    [<Obsolete>]
-    let download<'a> (url : string) = 
-        downloadAsync<'a> url |> Async.RunSynchronously
 
 module Utils = 
     open System
