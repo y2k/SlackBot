@@ -7,6 +7,7 @@ open SlackToTelegram.Utils
 
 module Bot = SlackToTelegram.Messengers
 module DB = SlackToTelegram.Storage
+module I = SlackToTelegram.Infrastructure
 
 module Domain = 
     let makeMessageForTopChannels channels = 
@@ -62,7 +63,8 @@ module Domain =
         |> List.filter (fun _ -> List.isEmpty newMessages |> not)
         |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
     
-    let toUpdateNotificationWithOffset (ch, slackMessages, offset, usersForChannel) = 
+    let toUpdateNotificationWithOffset (ch, slackMessages, offset, 
+                                        usersForChannel) = 
         let newMessages = limitMessagesToOffset offset slackMessages
         let newOffset = newMessages |> List.tryPick (fun x -> Some x.ts)
         let msgs = 
@@ -106,24 +108,21 @@ let saveUpdates token (newOffset, ch, msgs) =
             if r = Bot.BotBlockedResponse then do! DB.removeChannelsForUser tid
     }
 
+let checkUpdates token = 
+    Bot.getSlackChannels()
+    |> Async.combine (fun _ -> DB.getAllChannels())
+    |> Async.map Domain.filterChannels
+    |> Async.bind (fun xs -> 
+           async { 
+               for x in xs do
+                   do! loadChannelUpdates x
+                       |> Async.map Domain.toUpdateNotificationWithOffset
+                       |> Async.bind (saveUpdates token)
+           })
+
 [<EntryPoint>]
 let main argv = 
-    let token = argv.[0]
-    Bot.repl' token handleTelegramCommand
-    Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
-    |> Observable.ignore
-    |> Observable.flatMapTask Bot.getSlackChannels
-    |> Observable.flatMapTask 
-           (fun slackChannels -> 
-           DB.getAllChannels() 
-           |> Async.map (fun channelsInDb -> channelsInDb, slackChannels))
-    |> Observable.map Domain.filterChannels
-    |> Observable.flatMap (fun x -> x.ToObservable())
-    |> Observable.flatMapTask loadChannelUpdates
-    |> Observable.map Domain.toUpdateNotificationWithOffset
-    |> Observable.flatMapTask (saveUpdates token)
-    |> fun o -> o.Subscribe(DefaultErrorHandler())
-    |> ignore
     printfn "listening for slack updates..."
-    Thread.Sleep(-1)
+    Bot.repl argv.[0] handleTelegramCommand
+    I.loop (fun _ -> checkUpdates argv.[0])
     0

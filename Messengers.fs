@@ -102,7 +102,7 @@ module Messengers =
                 return UnknownErrorResponse
         }
     
-    let repl' token callback = 
+    let repl token callback = 
         getNewBotMessages token
         |> Observable.flatMapTask 
                (fun x -> 

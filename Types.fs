@@ -75,6 +75,17 @@ module Infrastructure =
             use reader = new JsonTextReader(new StringReader(content))
             return reader |> JsonSerializer().Deserialize<'a>
         }
+    
+    let loop action = 
+        let rec loopInner() = 
+            async { 
+                try 
+                    do! action()
+                with e -> printfn "ERROR: %O" e
+                do! Async.Sleep 30000
+                do! loopInner()
+            }
+        loopInner() |> Async.RunSynchronously
 
 module Utils = 
     open System
