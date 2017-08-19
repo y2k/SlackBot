@@ -61,7 +61,7 @@ module Storage =
         executeAsync "insert into channels (id, user) values ('{0}', '{1}')" 
             [ id; user ]
     let removeChannelsForUser (user : User) = 
-        execute "delete from channels where user = '{0}'" [ user ]
+        executeAsync "delete from channels where user = '{0}'" [ user ]
     let getAllChannels() = 
         querySql<string> "select distinct id from channels" []
     let getUsersForChannel (channel : string) = 

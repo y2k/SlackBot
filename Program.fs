@@ -107,11 +107,11 @@ let main argv =
     |> Observable.map 
            (fun (message, tid) -> 
            (tid, message |> Bot.sendToTelegramSingle token tid Styled))
-    |> Observable.map (fun (tid, x) -> 
+    |> Observable.flatMapTask (fun (tid, x) -> 
            match x with
            | Bot.BotBlockedResponse -> DB.removeChannelsForUser tid
-           | _ -> ())
-    |> (fun o -> o.Subscribe(DefaultErrorHandler()))
+           | _ -> () |> async.Return)
+    |> fun o -> o.Subscribe(DefaultErrorHandler())
     |> ignore
     printfn "listening for slack updates..."
     Thread.Sleep(-1)
