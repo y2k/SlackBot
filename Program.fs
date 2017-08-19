@@ -9,7 +9,10 @@ module Bot = SlackToTelegram.Messengers
 module DB = SlackToTelegram.Storage
 module I = SlackToTelegram.Infrastructure
 
-module Domain = 
+module Message = 
+    let subscribe x = "Подписка на <code>" + x + "</code> выполнена успешно"
+    let unsubscribe x = "Отписка от <code>" + x + "</code> выполнена успешно"
+    
     let makeMessageForTopChannels channels = 
         channels
         |> List.filter (fun x -> x.num_members >= 100)
@@ -32,6 +35,13 @@ module Domain =
             |> List.reduce (fun a x -> a + ", " + x)
             |> (+) "Каналы на которые вы подписаны: "
     
+    let help = "<b>Команды бота:</b>
+• <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
+• <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
+• <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
+• <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)"
+
+module Domain = 
     let parseCommand (command : string) = 
         match command.Split(' ') |> Seq.toList with
         | "top" :: _ -> Top
@@ -74,23 +84,13 @@ module Domain =
 let handleTelegramCommand (user : User) (message : string) = 
     match Domain.parseCommand message with
     | Top -> 
-        Bot.getSlackChannels() |> Async.map Domain.makeMessageForTopChannels
+        Bot.getSlackChannels() |> Async.map Message.makeMessageForTopChannels
     | Ls -> 
         DB.queryUserChannels user 
-        |> Async.map Domain.makeMessageFromUserChannels
-    | Add x -> 
-        DB.add user x 
-        |> Async.ignore ("Подписка на <code>" + x + "</code> выполнена успешно")
-    | Rm x -> 
-        DB.remove user x 
-        |> Async.ignore ("Отписка от <code>" + x + "</code> выполнена успешно")
-    | Unknow -> 
-        "<b>Команды бота:</b>
-• <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
-• <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
-• <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
-• <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)" 
-        |> async.Return
+        |> Async.map Message.makeMessageFromUserChannels
+    | Add x -> DB.add user x |> Async.ignore (Message.subscribe x)
+    | Rm x -> DB.remove user x |> Async.ignore (Message.unsubscribe x)
+    | Unknow -> Message.help |> async.Return
 
 let loadChannelUpdates ch = async { let! slackMessages = Bot.getSlackMessages 
                                                              ch.channel_id
