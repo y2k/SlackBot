@@ -49,10 +49,15 @@ module Observable =
     let ignore (o : IObservable<'a>) = o.Select(fun _ -> ())
 
 module Async = 
+    let bind f a = async { let! r = a
+                          return! f r }
     let map f a = async { let! r = a
                           return f r }
     let ignore x a = async { let! _ = a
                              return x }
+    let combine f a = async { let! r = a
+                              let! x = f r
+                              return x, r }
 
 module Infrastructure = 
     open System.IO

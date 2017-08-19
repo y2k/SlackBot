@@ -68,8 +68,8 @@ module Storage =
         querySql<string> "select user from channels where id = '{0}'" 
             [ channel ]
     let getOffsetWith (id : string) = 
-        querySql<TelegramOffset> "select ts from offsets where id = '{0}'" 
-            [ id ] |> List.tryHead
+        querySqlAsync<TelegramOffset> "select ts from offsets where id = '{0}'" 
+            [ id ] |> Async.map List.tryHead
     let setOffsetWith (id : string) (o : TelegramOffset) = 
         execute 
             "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" 

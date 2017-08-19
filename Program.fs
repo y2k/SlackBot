@@ -88,12 +88,13 @@ let main argv =
     |> Observable.flatMap (fun x -> x.ToObservable())
     |> Observable.flatMapTask 
            (fun ch -> 
-           Bot.getSlackMessages ch.channel_id 
-           |> Async.map (fun slackMessages -> ch, slackMessages))
+           Bot.getSlackMessages ch.channel_id
+           |> Async.combine (fun slackMessages -> DB.getOffsetWith ch.name)
+           |> Async.map 
+                  (fun (offset, slackMessages) -> ch, slackMessages, offset))
     |> Observable.map 
-           (fun (ch, slackMessages) -> 
-           let channelOffset = 
-               DB.getOffsetWith ch.name |> Option.defaultValue "0"
+           (fun (ch, slackMessages, offset) -> 
+           let channelOffset = offset |> Option.defaultValue "0"
            let newMessages = 
                slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
            newMessages
