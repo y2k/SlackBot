@@ -25,7 +25,7 @@ module Storage =
     
     let private lock = new SemaphoreSlim(0, 1)
     
-    let private querySqlAsync<'T> sql args = 
+    let private querySql<'T> sql args = 
         async { 
             do! lock.WaitAsync() |> Async.AwaitTask
             let! q = connection.Value.QueryAsync<'T>(format sql args) 
@@ -34,11 +34,7 @@ module Storage =
             return q |> Seq.toList
         }
     
-    [<Obsolete>]
-    let private querySql<'T> sql args = 
-        querySqlAsync<'T> sql args |> Async.RunSynchronously
-    
-    let private executeAsync sql args = 
+    let private execute sql args = 
         async { 
             do! lock.WaitAsync() |> Async.AwaitTask
             do! connection.Value.ExecuteAsync(format sql args)
@@ -47,28 +43,24 @@ module Storage =
             lock.Release() |> ignore
         }
     
-    [<Obsolete>]
-    let private execute sql args = 
-        executeAsync sql args |> Async.RunSynchronously
-    
     let queryUserChannels (user : User) = 
-        querySqlAsync<Channel> "select * from channels where user = '{0}'" 
+        querySql<Channel> "select * from channels where user = '{0}'" 
             [ user ]
     let remove (user : User) (id : ChannelId) = 
-        executeAsync "delete from channels where user = '{0}' and id = '{1}'" 
+        execute "delete from channels where user = '{0}' and id = '{1}'" 
             [ user; id ]
     let add (user : User) (id : ChannelId) = 
-        executeAsync "insert into channels (id, user) values ('{0}', '{1}')" 
+        execute "insert into channels (id, user) values ('{0}', '{1}')" 
             [ id; user ]
     let removeChannelsForUser (user : User) = 
-        executeAsync "delete from channels where user = '{0}'" [ user ]
+        execute "delete from channels where user = '{0}'" [ user ]
     let getAllChannels() = 
-        querySqlAsync<string> "select distinct id from channels" []
+        querySql<string> "select distinct id from channels" []
     let getUsersForChannel (channel : string) = 
         querySql<string> "select user from channels where id = '{0}'" 
             [ channel ]
     let getOffsetWith (id : string) = 
-        querySqlAsync<TelegramOffset> "select ts from offsets where id = '{0}'" 
+        querySql<TelegramOffset> "select ts from offsets where id = '{0}'" 
             [ id ] |> Async.map List.tryHead
     let setOffsetWith (id : string) (o : TelegramOffset) = 
         execute 

@@ -52,14 +52,22 @@ module Domain =
         |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
                (chName.ToUpper())
     
-    let limitMessagesToOffset offset slackMessages = 
+    let private limitMessagesToOffset offset slackMessages = 
         let channelOffset = offset |> Option.defaultValue "0"
         slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
     
-    let makeTelegramMessageAboutUpdates usersForChannel ch newMessages = 
+    let private makeTelegramMessageAboutUpdates (usersForChannel : string list) 
+        ch newMessages = 
         usersForChannel
         |> List.filter (fun _ -> List.isEmpty newMessages |> not)
         |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
+    
+    let extractNewSnapshotsWithOffset (ch, slackMessages, offset, usersForChannel) = 
+        let newMessages = limitMessagesToOffset offset slackMessages
+        let newOffset = newMessages |> List.tryPick (fun x -> Some x.ts)
+        let msgs = 
+            makeTelegramMessageAboutUpdates usersForChannel ch newMessages
+        newOffset, ch, msgs
 
 let handleTelegramCommand (user : User) (message : string) = 
     match Domain.parseCommand message with
@@ -82,6 +90,22 @@ let handleTelegramCommand (user : User) (message : string) =
 • <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)" 
         |> async.Return
 
+let loadChannelUpdates ch = async { let! slackMessages = Bot.getSlackMessages 
+                                                             ch.channel_id
+                                    let! offset = DB.getOffsetWith ch.name
+                                    let! users = DB.getUsersForChannel ch.name
+                                    return ch, slackMessages, offset, users }
+
+let saveUpdates token (newOffset, ch, msgs) = 
+    async { 
+        do! match newOffset with
+            | Some x -> DB.setOffsetWith ch.name x
+            | None -> async.Zero()
+        for (message, tid) in msgs do
+            let! r = message |> Bot.sendToTelegramSingle token tid Styled
+            if r = Bot.BotBlockedResponse then do! DB.removeChannelsForUser tid
+    }
+
 [<EntryPoint>]
 let main argv = 
     let token = argv.[0]
@@ -95,29 +119,9 @@ let main argv =
            |> Async.map (fun channelsInDb -> channelsInDb, slackChannels))
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
-    |> Observable.flatMapTask 
-           (fun ch -> 
-           Bot.getSlackMessages ch.channel_id
-           |> Async.combine (fun slackMessages -> DB.getOffsetWith ch.name)
-           |> Async.map 
-                  (fun (offset, slackMessages) -> ch, slackMessages, offset))
-    |> Observable.map (fun (ch, slackMessages, offset) -> 
-           let newMessages = Domain.limitMessagesToOffset offset slackMessages
-           newMessages
-           |> List.tryPick (fun x -> Some x.ts)
-           |> Option.map (fun x -> DB.setOffsetWith ch.name x)
-           |> ignore
-           let usersForChannel = DB.getUsersForChannel ch.name
-           Domain.makeTelegramMessageAboutUpdates usersForChannel ch newMessages)
-    |> flatMap (fun x -> x.ToObservable())
-    |> Observable.flatMapTask (fun (message, tid) -> 
-           message
-           |> Bot.sendToTelegramSingle token tid Styled
-           |> Async.map (fun x -> tid, x))
-    |> Observable.flatMapTask (fun (tid, x) -> 
-           match x with
-           | Bot.BotBlockedResponse -> DB.removeChannelsForUser tid
-           | _ -> () |> async.Return)
+    |> Observable.flatMapTask loadChannelUpdates
+    |> Observable.map Domain.extractNewSnapshotsWithOffset
+    |> Observable.flatMapTask (saveUpdates token)
     |> fun o -> o.Subscribe(DefaultErrorHandler())
     |> ignore
     printfn "listening for slack updates..."
