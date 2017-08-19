@@ -82,8 +82,7 @@ module Messengers =
             let userId = user |> ChatId.op_Implicit
             match html with
             | Styled -> 
-                bot.SendTextMessageAsync
-                    (userId, message, parseMode = Types.Enums.ParseMode.Html).Result
+                bot.SendTextMessageAsync(userId, message, parseMode = Types.Enums.ParseMode.Html).Result
             | Plane -> bot.SendTextMessageAsync(userId, message).Result
             |> ignore
             SuccessResponse
