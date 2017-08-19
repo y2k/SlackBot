@@ -55,7 +55,7 @@ module Storage =
         querySqlAsync<Channel> "select * from channels where user = '{0}'" 
             [ user ]
     let remove (user : User) (id : ChannelId) = 
-        execute "delete from channels where user = '{0}' and id = '{1}'" 
+        executeAsync "delete from channels where user = '{0}' and id = '{1}'" 
             [ user; id ]
     let add (user : User) (id : ChannelId) = 
         executeAsync "insert into channels (id, user) values ('{0}', '{1}')" 

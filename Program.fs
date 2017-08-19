@@ -49,9 +49,9 @@ module Domain =
             |> Async.ignore 
                    ("Подписка на <code>" + x + "</code> выполнена успешно")
         | Rm x -> 
-            DB.remove user x
-            "Отписка от <code>" + x + "</code> выполнена успешно" 
-            |> async.Return
+            DB.remove user x 
+            |> Async.ignore 
+                   ("Отписка от <code>" + x + "</code> выполнена успешно")
         | Unknow -> 
             "<b>Команды бота:</b>
     • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться

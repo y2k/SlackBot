@@ -60,16 +60,7 @@ module Infrastructure =
     open Newtonsoft.Json
     
     let private httpClient = new HttpClient()
-    
-    let download<'a> (url : string) = 
-        let req = new HttpRequestMessage(HttpMethod.Get, url)
-        req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
-        let resp = httpClient.SendAsync(req).Result
-        resp.Content.ReadAsStringAsync().Result
-        |> StringReader
-        |> JsonTextReader
-        |> JsonSerializer().Deserialize<'a>
-    
+
     let downloadAsync<'a> (url : string) = 
         async { 
             let req = new HttpRequestMessage(HttpMethod.Get, url)
@@ -81,6 +72,10 @@ module Infrastructure =
                    |> JsonTextReader
                    |> JsonSerializer().Deserialize<'a>
         }
+
+    [<Obsolete>]
+    let download<'a> (url : string) = 
+        downloadAsync<'a> url |> Async.RunSynchronously
 
 module Utils = 
     open System
