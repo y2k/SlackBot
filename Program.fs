@@ -101,7 +101,7 @@ let main argv =
            |> Option.map (fun x -> DB.setOffsetWith ch.name x)
            |> ignore
            DB.getUsersForChannel ch.name
-           |> List.map (fun tid -> (tid, ch.name, newMessages))
+           |> List.map (fun tid -> tid, ch.name, newMessages)
            |> List.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
            |> List.map 
                   (fun (tid, chName, msgs) -> 
