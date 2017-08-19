@@ -51,10 +51,16 @@ module Domain =
                + a) ""
         |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
                (chName.ToUpper())
-
-    let limitMessagesToOffset offset slackMessages =
+    
+    let limitMessagesToOffset offset slackMessages = 
         let channelOffset = offset |> Option.defaultValue "0"
         slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
+    
+    let todoMethod usersForChannel ch newMessages = 
+        usersForChannel
+        |> List.map (fun tid -> tid, newMessages)
+        |> List.filter (fun (_, msgs) -> List.isEmpty msgs |> not)
+        |> List.map (fun (tid, msgs) -> (makeUpdateMessage msgs ch.name, tid))
 
 let handleTelegramCommand (user : User) (message : string) = 
     match Domain.parseCommand message with
@@ -96,19 +102,14 @@ let main argv =
            |> Async.combine (fun slackMessages -> DB.getOffsetWith ch.name)
            |> Async.map 
                   (fun (offset, slackMessages) -> ch, slackMessages, offset))
-    |> Observable.map 
-           (fun (ch, slackMessages, offset) -> 
+    |> Observable.map (fun (ch, slackMessages, offset) -> 
            let newMessages = Domain.limitMessagesToOffset offset slackMessages
            newMessages
            |> List.tryPick (fun x -> Some x.ts)
            |> Option.map (fun x -> DB.setOffsetWith ch.name x)
            |> ignore
-           DB.getUsersForChannel ch.name
-           |> List.map (fun tid -> tid, ch.name, newMessages)
-           |> List.filter (fun (_, _, msgs) -> not msgs.IsEmpty)
-           |> List.map 
-                  (fun (tid, chName, msgs) -> 
-                  (Domain.makeUpdateMessage msgs chName, tid)))
+           let usersForChannel = DB.getUsersForChannel ch.name
+           Domain.todoMethod usersForChannel ch newMessages)
     |> flatMap (fun x -> x.ToObservable())
     |> Observable.map 
            (fun (message, tid) -> 
