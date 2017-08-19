@@ -35,16 +35,7 @@ module Messengers =
                      ts = "" })
         bot.StartReceiving()
         result
-    
-    let private downloadJson<'a> (url : string) = 
-        let req = new HttpRequestMessage(HttpMethod.Get, url)
-        req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
-        let resp = HttpClient().SendAsync(req).Result
-        resp.Content.ReadAsStringAsync().Result
-        |> StringReader
-        |> JsonTextReader
-        |> JsonSerializer().Deserialize<'a>
-    
+
     type ProfileResponse = 
         { real_name : string }
     
@@ -75,14 +66,11 @@ module Messengers =
     type ChannelsResponse = 
         { channels : SlackChannel [] }
     
-    let getSlackChannels'() = 
+    let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
         |> I.downloadAsync<ChannelsResponse>
         |> Async.map (fun x -> x.channels |> Array.toList)
-    
-    [<Obsolete>]
-    let getSlackChannels = getSlackChannels' >> Async.RunSynchronously
-    
+
     type TelegramResponse = 
         | SuccessResponse
         | BotBlockedResponse

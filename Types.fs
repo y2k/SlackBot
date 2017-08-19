@@ -51,6 +51,8 @@ module Observable =
 module Async = 
     let map f a = async { let! r = a
                           return f r }
+    let ignore x a = async { let! _ = a
+                             return x }
 
 module Infrastructure = 
     open System.IO

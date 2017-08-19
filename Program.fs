@@ -41,15 +41,13 @@ module Domain =
     
     let handleMessage (user : User) (message : string) = 
         match parseCommand message with
-        | Top -> Bot.getSlackChannels'() |> Async.map makeMessageForTopChannels
+        | Top -> Bot.getSlackChannels() |> Async.map makeMessageForTopChannels
         | Ls -> 
-            DB.query user
-            |> makeMessageFromUserChannels
-            |> async.Return
+            DB.queryUserChannels user |> Async.map makeMessageFromUserChannels
         | Add x -> 
-            DB.add user x
-            "Подписка на <code>" + x + "</code> выполнена успешно" 
-            |> async.Return
+            DB.add user x 
+            |> Async.ignore 
+                   ("Подписка на <code>" + x + "</code> выполнена успешно")
         | Rm x -> 
             DB.remove user x
             "Отписка от <code>" + x + "</code> выполнена успешно" 
@@ -81,7 +79,7 @@ let main argv =
     Bot.repl' token Domain.handleMessage
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
     |> Observable.ignore
-    |> Observable.flatMapTask Bot.getSlackChannels'
+    |> Observable.flatMapTask Bot.getSlackChannels
     |> Observable.map (fun slackChannels -> DB.getAllChannels(), slackChannels)
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
