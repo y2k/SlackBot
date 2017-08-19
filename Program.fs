@@ -80,7 +80,10 @@ let main argv =
     Observable.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(30.))
     |> Observable.ignore
     |> Observable.flatMapTask Bot.getSlackChannels
-    |> Observable.map (fun slackChannels -> DB.getAllChannels(), slackChannels)
+    |> Observable.flatMapTask 
+           (fun slackChannels -> 
+           DB.getAllChannels() 
+           |> Async.map (fun channelsInDb -> channelsInDb, slackChannels))
     |> Observable.map Domain.filterChannels
     |> Observable.flatMap (fun x -> x.ToObservable())
     |> Observable.flatMapTask 

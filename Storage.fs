@@ -63,7 +63,7 @@ module Storage =
     let removeChannelsForUser (user : User) = 
         executeAsync "delete from channels where user = '{0}'" [ user ]
     let getAllChannels() = 
-        querySql<string> "select distinct id from channels" []
+        querySqlAsync<string> "select distinct id from channels" []
     let getUsersForChannel (channel : string) = 
         querySql<string> "select user from channels where id = '{0}'" 
             [ channel ]
