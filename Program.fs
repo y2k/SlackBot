@@ -52,6 +52,10 @@ module Domain =
         |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
                (chName.ToUpper())
 
+    let limitMessagesToOffset offset slackMessages =
+        let channelOffset = offset |> Option.defaultValue "0"
+        slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
+
 let handleTelegramCommand (user : User) (message : string) = 
     match Domain.parseCommand message with
     | Top -> 
@@ -94,9 +98,7 @@ let main argv =
                   (fun (offset, slackMessages) -> ch, slackMessages, offset))
     |> Observable.map 
            (fun (ch, slackMessages, offset) -> 
-           let channelOffset = offset |> Option.defaultValue "0"
-           let newMessages = 
-               slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
+           let newMessages = Domain.limitMessagesToOffset offset slackMessages
            newMessages
            |> List.tryPick (fun x -> Some x.ts)
            |> Option.map (fun x -> DB.setOffsetWith ch.name x)
