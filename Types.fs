@@ -53,11 +53,16 @@ module Async =
                            return! f r }
     let map f a = async { let! r = a
                           return f r }
+    let map2 f a = async { let! (r1, r2) = a
+                           return f r1 r2 }
     let ignore x a = async { let! _ = a
                              return x }
     let combine f a = async { let! r = a
                               let! x = f r
                               return x, r }
+    let zip a2 a1 = async { let! r1 = a1
+                            let! r2 = a2
+                            return r2, r1 }
 
 module Infrastructure = 
     open System.IO

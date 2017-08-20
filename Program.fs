@@ -60,7 +60,7 @@ module Domain =
         | "rm" :: x :: _ -> Rm x
         | _ -> Unknow
     
-    let filterChannelsWithIds (dbChannels, channels) = 
+    let filterChannelsWithIds dbChannels channels = 
         channels |> List.where (fun x -> dbChannels |> List.contains x.name)
     
     let private limitMessagesToOffset offset slackMessages = 
@@ -114,8 +114,8 @@ let notifyUpdatesAndSaveOffset token (newOffset, ch, msgs) =
 
 let checkUpdates token = 
     Bot.getSlackChannels()
-    |> Async.combine (fun _ -> DB.getAllChannels())
-    |> Async.map Domain.filterChannelsWithIds
+    |> Async.zip (DB.getAllChannels())
+    |> Async.map2 Domain.filterChannelsWithIds
     |> Async.bind (fun channels -> 
            async { 
                for x in channels do
