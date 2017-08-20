@@ -112,17 +112,16 @@ let notifyUpdatesAndSaveOffset token (newOffset, ch, msgs) =
             if r = Bot.BotBlockedResponse then do! DB.removeChannelsForUser tid
     }
 
+let handleChannel token x =
+    loadChannelUpdates x
+    |> Async.map Domain.toUpdateNotificationWithOffset
+    |> Async.bind (notifyUpdatesAndSaveOffset token)
+    
 let checkUpdates token = 
     Bot.getSlackChannels()
     |> Async.zip (DB.getAllChannels())
     |> Async.map2 Domain.filterChannelsWithIds
-    |> Async.bind (fun channels -> 
-           async { 
-               for x in channels do
-                   do! loadChannelUpdates x
-                       |> Async.map Domain.toUpdateNotificationWithOffset
-                       |> Async.bind (notifyUpdatesAndSaveOffset token)
-           })
+    |> Async.forAll (handleChannel token)
 
 [<EntryPoint>]
 let main argv = 

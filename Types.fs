@@ -49,6 +49,13 @@ module Observable =
     let ignore (o : IObservable<'a>) = o.Select(fun _ -> ())
 
 module Async = 
+    let forAll f a =
+        async {
+            let! xs = a
+            for x in xs do
+                do! f x
+        }
+
     let bind f a = async { let! r = a
                            return! f r }
     let map f a = async { let! r = a
