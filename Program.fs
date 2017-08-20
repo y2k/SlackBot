@@ -50,7 +50,7 @@ module Domain =
         | "rm" :: x :: _ -> Rm x
         | _ -> Unknow
     
-    let filterChannels (dbChannels, channels) = 
+    let filterChannelsWithIds (dbChannels, channels) = 
         channels |> List.where (fun x -> dbChannels |> List.contains x.name)
     
     let makeUpdateMessage msgs (chName : string) = 
@@ -67,11 +67,13 @@ module Domain =
         let channelOffset = offset |> Option.defaultValue "0"
         slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
     
-    let private makeTelegramMessageAboutUpdates (usersForChannel : string list) 
-        ch newMessages = 
-        usersForChannel
-        |> List.filter (fun _ -> List.isEmpty newMessages |> not)
-        |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
+    let private makeTelegramMessageAboutUpdates (usersForChannel : User list) ch 
+        newMessages = 
+        match newMessages with
+        | [] -> []
+        | _ -> 
+            usersForChannel 
+            |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
     
     let toUpdateNotificationWithOffset (ch, slackMessages, offset, 
                                         usersForChannel) = 
@@ -98,7 +100,7 @@ let loadChannelUpdates ch = async { let! slackMessages = Bot.getSlackMessages
                                     let! users = DB.getUsersForChannel ch.name
                                     return ch, slackMessages, offset, users }
 
-let saveUpdates token (newOffset, ch, msgs) = 
+let notifyUpdatesAndSaveOffset token (newOffset, ch, msgs) = 
     async { 
         do! match newOffset with
             | Some x -> DB.setOffsetWith ch.name x
@@ -111,13 +113,13 @@ let saveUpdates token (newOffset, ch, msgs) =
 let checkUpdates token = 
     Bot.getSlackChannels()
     |> Async.combine (fun _ -> DB.getAllChannels())
-    |> Async.map Domain.filterChannels
-    |> Async.bind (fun xs -> 
+    |> Async.map Domain.filterChannelsWithIds
+    |> Async.bind (fun channels -> 
            async { 
-               for x in xs do
+               for x in channels do
                    do! loadChannelUpdates x
                        |> Async.map Domain.toUpdateNotificationWithOffset
-                       |> Async.bind (saveUpdates token)
+                       |> Async.bind (notifyUpdatesAndSaveOffset token)
            })
 
 [<EntryPoint>]
