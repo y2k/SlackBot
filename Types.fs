@@ -36,6 +36,9 @@ type DefaultErrorHandler() =
         member this.OnNext(s) = printfn "Status OK (%O)" DateTime.Now
         member this.OnCompleted() = ()
 
+module String = 
+    let split (s : string) = s.Split(' ') |> Seq.toList
+
 module Observable = 
     open System.Reactive.Linq
     

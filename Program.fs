@@ -52,8 +52,8 @@ module Message =
                (chName.ToUpper())
 
 module Domain = 
-    let parseCommand (command : string) = 
-        match command.Split(' ') |> Seq.toList with
+    let parseCommand command = 
+        match String.split command with
         | "top" :: _ -> Top
         | "ls" :: _ -> Ls
         | "add" :: x :: _ -> Add x
@@ -77,55 +77,60 @@ module Domain =
                    (fun tid -> 
                    Message.makeUpdateMessage newMessages ch.name, tid)
     
-    let toUpdateNotificationWithOffset (ch, slackMessages, offset, 
-                                        usersForChannel) = 
+    let toUpdateNotificationWithOffset ch 
+        (slackMessages, offset, usersForChannel) = 
         let newMessages = limitMessagesToOffset offset slackMessages
         let newOffset = newMessages |> List.tryPick (fun x -> Some x.ts)
         let msgs = 
             makeTelegramMessageAboutUpdates usersForChannel ch newMessages
-        newOffset, ch, msgs
+        newOffset, msgs
 
-let handleTelegramCommand (user : User) (message : string) = 
-    match Domain.parseCommand message with
-    | Top -> 
-        Bot.getSlackChannels() |> Async.map Message.makeMessageForTopChannels
-    | Ls -> 
-        DB.queryUserChannels user 
-        |> Async.map Message.makeMessageFromUserChannels
-    | Add x -> DB.add user x |> Async.ignore (Message.subscribe x)
-    | Rm x -> DB.remove user x |> Async.ignore (Message.unsubscribe x)
-    | Unknow -> Message.help |> async.Return
-
-let loadChannelUpdates ch = async { let! slackMessages = Bot.getSlackMessages 
-                                                             ch.channel_id
-                                    let! offset = DB.getOffsetWith ch.name
-                                    let! users = DB.getUsersForChannel ch.name
-                                    return ch, slackMessages, offset, users }
-
-let notifyUpdatesAndSaveOffset token (newOffset, ch, msgs) = 
-    async { 
-        do! match newOffset with
-            | Some x -> DB.setOffsetWith ch.name x
-            | None -> async.Zero()
-        for (message, tid) in msgs do
-            let! r = message |> Bot.sendToTelegramSingle token tid Styled
-            if r = Bot.BotBlockedResponse then do! DB.removeChannelsForUser tid
-    }
-
-let handleChannel token x =
-    loadChannelUpdates x
-    |> Async.map Domain.toUpdateNotificationWithOffset
-    |> Async.bind (notifyUpdatesAndSaveOffset token)
+module Services = 
+    let handleTelegramCommand (user : User) (message : string) = 
+        match Domain.parseCommand message with
+        | Top -> 
+            Bot.getSlackChannels() 
+            |> Async.map Message.makeMessageForTopChannels
+        | Ls -> 
+            DB.queryUserChannels user 
+            |> Async.map Message.makeMessageFromUserChannels
+        | Add x -> DB.add user x |> Async.ignore (Message.subscribe x)
+        | Rm x -> DB.remove user x |> Async.ignore (Message.unsubscribe x)
+        | Unknow -> Message.help |> async.Return
     
-let checkUpdates token = 
-    Bot.getSlackChannels()
-    |> Async.zip (DB.getAllChannels())
-    |> Async.map2 Domain.filterChannelsWithIds
-    |> Async.forAll (handleChannel token)
+    let private loadChannelUpdates ch = 
+        async { let! slackMessages = Bot.getSlackMessages ch.channel_id
+                let! offset = DB.getOffsetWith ch.name
+                let! users = DB.getUsersForChannel ch.name
+                return slackMessages, offset, users }
+    
+    let private notifyUpdatesAndSaveOffset token ch (newOffset, msgs) = 
+        async { 
+            do! match newOffset with
+                | Some x -> DB.setOffsetWith ch.name x
+                | None -> async.Zero()
+            for (message, tid) in msgs do
+                let! r = message |> Bot.sendToTelegramSingle token tid Styled
+                if r = Bot.BotBlockedResponse then 
+                    do! DB.removeChannelsForUser tid
+        }
+    
+    let private getChannelForUpdateChecks() = 
+        Bot.getSlackChannels()
+        |> Async.zip (DB.getAllChannels())
+        |> Async.map2 Domain.filterChannelsWithIds
+    
+    let private handleChannel token ch = 
+        loadChannelUpdates ch
+        |> Async.map (Domain.toUpdateNotificationWithOffset ch)
+        |> Async.bind (notifyUpdatesAndSaveOffset token ch)
+    
+    let checkUpdates token = 
+        getChannelForUpdateChecks() |> Async.forAll (handleChannel token)
 
 [<EntryPoint>]
 let main argv = 
     printfn "listening for slack updates..."
-    Bot.repl argv.[0] handleTelegramCommand
-    I.loop (fun _ -> checkUpdates argv.[0])
+    Bot.repl argv.[0] Services.handleTelegramCommand
+    I.loop (fun _ -> Services.checkUpdates argv.[0])
     0
