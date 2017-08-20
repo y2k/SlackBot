@@ -19,11 +19,12 @@ module Storage =
         lazy (let db = new SqliteConnection("DataSource=main.db")
               db.Execute("
             create table if not exists channels (id TEXT, user TEXT);
-            create table if not exists offsets (id INTEGER, ts TEXT);") 
+            drop table if exists offsets;
+            create table offsets (id TEXT, ts TEXT);") 
               |> ignore
               db)
     
-    let private lock = new SemaphoreSlim(0, 1)
+    let private lock = new SemaphoreSlim(1)
     
     let private querySql<'T> sql args = 
         async { 
@@ -42,7 +43,18 @@ module Storage =
                 |> Async.Ignore
             lock.Release() |> ignore
         }
+
+    let queryChannelForUser () =
+        querySql<ChannelForUser> "select * from channels" []
+
+    let queryOffsetForChannel () =
+        querySql<OffsetForChannel> "select * from offsets" []
     
+    let saveOffset (id : string) (offset : string) = 
+        execute 
+            "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" 
+            [ id; offset ]
+
     let queryUserChannels (user : User) = 
         querySql<Channel> "select * from channels where user = '{0}'" 
             [ user ]
@@ -62,6 +74,7 @@ module Storage =
     let getOffsetWith (id : string) = 
         querySql<TelegramOffset> "select ts from offsets where id = '{0}'" 
             [ id ] |> Async.map List.tryHead
+    [<Obsolete>]
     let setOffsetWith (id : string) (o : TelegramOffset) = 
         execute 
             "delete from offsets where id = '{0}'; insert into offsets (id, ts) values ('{0}', '{1}')" 

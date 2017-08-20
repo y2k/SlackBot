@@ -4,9 +4,11 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Infrastructure.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="Messengers.fs" />
+    <Compile Include="Messages.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

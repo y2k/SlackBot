@@ -1,5 +1,8 @@
 namespace SlackToTelegram
 
+open SlackToTelegram.Utils
+open Infrastructure
+
 type SlackChannelPurpose = 
     { value : string }
 
@@ -9,32 +12,31 @@ type SlackChannel =
       num_members : int
       purpose : SlackChannelPurpose }
 
-module Messengers = 
-    open System
+module Gitter = 
+    // type GitterMessageList = GitterMessage list
+    
+    // let toMessage (x : GitterMessage) = 
+    //     { text = x.text
+    //       user = x.fromUser.username
+    //       ts = x.id |> ChannelOffset }
+
+    let extractIdFromHtml = 
+        function 
+        | Regex "\"troupe\":{\"id\":\"([^\"]+)" [ id ] -> Some id
+        | _ -> None
+    
+    let getMessages (channelId : string) (token : string) = 
+        // sprintf "https://gitter.com/%O" channelId
+        // |> Http.downloadString []
+        // |> Async.mapOption extractIdFromHtml
+        // |> Async.map (sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages")
+        // |> Async.bind 
+        //        (Http.downloadJson<GitterMessageList> [ "x-access-token", token ])
+        // |> Async.map (List.map toMessage)
+        failwith "TODO"
+
+module Slack = 
     open System.Collections.Generic
-    open System.IO
-    open System.Net
-    open System.Net.Http
-    open Newtonsoft.Json
-    open Telegram.Bot
-    open Telegram.Bot.Types
-    open SlackToTelegram.Utils
-    
-    module I = Infrastructure
-    module db = SlackToTelegram.Storage
-    
-    let getNewBotMessages token = 
-        let bot = TelegramBotClient(token)
-        
-        let result = 
-            bot.OnUpdate
-            |> Observable.map (fun x -> x.Update)
-            |> Observable.map (fun x -> 
-                   { text = x.Message.Text
-                     user = string x.Message.From.Id
-                     ts = "" })
-        bot.StartReceiving()
-        result
     
     type ProfileResponse = 
         { real_name : string }
@@ -48,28 +50,35 @@ module Messengers =
         { users : Dictionary<string, UserResponse> }
     
     type MessagesResponse = 
-        { messages : SlackMessage []
+        { messages : Message []
           related : RelatedResponse }
     
-    let getSlackMessages (channelId : string) = 
+    let fixUserNames r = 
+        r.messages
+        |> Array.toList
+        |> List.map (fun x -> 
+               tryGet r.related.users x.user
+               |> Option.map (fun x -> x.profile.real_name)
+               |> Option.defaultValue "Unknown"
+               |> fun name -> { x with user = name })
+    
+    let getSlackMessages channelId = 
         "https://api.slackarchive.io/v1/messages?size=5&channel=" + channelId
-        |> I.download<MessagesResponse>
-        |> Async.map (fun r -> 
-               r.messages
-               |> Array.toList
-               |> List.map (fun x -> 
-                      tryGet r.related.users x.user
-                      |> Option.map (fun x -> x.profile.real_name)
-                      |> Option.defaultValue "Unknown"
-                      |> fun name -> { x with user = name }))
+        |> Http.downloadJson<MessagesResponse> []
+        |> Async.map fixUserNames
     
     type ChannelsResponse = 
         { channels : SlackChannel [] }
     
     let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
-        |> I.download<ChannelsResponse>
+        |> Http.downloadJson<ChannelsResponse> []
         |> Async.map (fun x -> x.channels |> Array.toList)
+
+module Telegram = 
+    open System
+    open Telegram.Bot
+    open Telegram.Bot.Types
     
     type TelegramResponse = 
         | SuccessResponse
@@ -102,14 +111,19 @@ module Messengers =
                 return UnknownErrorResponse
         }
     
+    let sendBroadcast message users =
+        async.Return [ UnknownErrorResponse ]
+
     let repl token callback = 
-        getNewBotMessages token
-        |> Observable.flatMapTask 
-               (fun x -> 
-               async 
-                   { 
-                   let! response = callback x.user x.text
-                   do! sendToTelegramSingle token x.user Styled response 
-                       |> Async.Ignore })
-        |> fun o -> o.Subscribe(DefaultErrorHandler())
-        |> ignore
+        let bot = TelegramBotClient(token)
+        bot.OnUpdate |> Event.add (fun x -> 
+                            async { 
+                                try 
+                                    let user = string x.Update.Message.From.Id
+                                    let! response = callback user 
+                                                        x.Update.Message.Text
+                                    do! sendToTelegramSingle token user Styled 
+                                            response |> Async.Ignore
+                                with e -> printfn "ERROR: %O" e
+                            }
+                            |> Async.Start)
