@@ -40,6 +40,16 @@ module Message =
 • <b>ls</b> - список каналов kotlinlang.slack.com на которые вы подписаны
 • <b>add</b> [канал] - подписаться на обновления канала (пример: <code>add russian</code>)
 • <b>rm</b> [канал] - отписаться от канал (пример: <code>remove russian</code>)"
+    
+    let makeUpdateMessage msgs (chName : string) = 
+        msgs
+        |> List.fold 
+               (fun a x -> 
+               "(<b>" + x.user + "</b>) " 
+               + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
+               + a) ""
+        |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
+               (chName.ToUpper())
 
 module Domain = 
     let parseCommand (command : string) = 
@@ -53,16 +63,6 @@ module Domain =
     let filterChannelsWithIds (dbChannels, channels) = 
         channels |> List.where (fun x -> dbChannels |> List.contains x.name)
     
-    let makeUpdateMessage msgs (chName : string) = 
-        msgs
-        |> List.fold 
-               (fun a x -> 
-               "(<b>" + x.user + "</b>) " 
-               + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
-               + a) ""
-        |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
-               (chName.ToUpper())
-    
     let private limitMessagesToOffset offset slackMessages = 
         let channelOffset = offset |> Option.defaultValue "0"
         slackMessages |> List.takeWhile (fun x -> x.ts <> channelOffset)
@@ -73,7 +73,9 @@ module Domain =
         | [] -> []
         | _ -> 
             usersForChannel 
-            |> List.map (fun tid -> makeUpdateMessage newMessages ch.name, tid)
+            |> List.map 
+                   (fun tid -> 
+                   Message.makeUpdateMessage newMessages ch.name, tid)
     
     let toUpdateNotificationWithOffset (ch, slackMessages, offset, 
                                         usersForChannel) = 
