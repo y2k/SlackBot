@@ -23,7 +23,7 @@ module Storage =
               |> ignore
               db)
     
-    let private lock = new SemaphoreSlim(0, 1)
+    let private lock = new SemaphoreSlim(1)
     
     let private querySql<'T> sql args = 
         async { 
