@@ -48,7 +48,7 @@ module Message =
                "(<b>" + x.user + "</b>) " 
                + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
                + a) ""
-        |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s" 
+        |> sprintf "<pre>Новые сообщения в канале %s</pre>\n\n%s" 
                (chName.ToUpper())
 
 module Domain = 
