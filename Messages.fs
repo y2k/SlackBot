@@ -1,11 +1,7 @@
 module Message
 
-open System
 open System.Net
-open System.Reactive.Linq
-open System.Threading
 open SlackToTelegram
-open SlackToTelegram.Utils
 
 module DB = SlackToTelegram.Storage
 module I = SlackToTelegram.Infrastructure
@@ -30,8 +26,8 @@ let makeMessageForTopChannels channels =
     |> List.reduce (fun a x -> a + "\n" + x)
     |> (+) "<b>Список доступных каналов:</b> \n"
 
-let makeMessageFromUserChannels = 
-    function 
+let makeMessageFromUserChannels (xs: Channel list) = 
+    match xs with
     | [] -> 
         "У вас нет подписок. Добавьте командой: <code>add [канал]</code>"
     | channels -> 

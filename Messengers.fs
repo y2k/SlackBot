@@ -13,27 +13,27 @@ type SlackChannel =
       purpose : SlackChannelPurpose }
 
 module Gitter = 
-    // type GitterMessageList = GitterMessage list
+    type GitterMessageUser = { username: string }
+    type GitterMessage = { text: string; fromUser: GitterMessageUser; id: string }
+    type GitterMessageList = GitterMessage list
     
-    // let toMessage (x : GitterMessage) = 
-    //     { text = x.text
-    //       user = x.fromUser.username
-    //       ts = x.id |> ChannelOffset }
+    let toMessage (x : GitterMessage) = 
+        { text = x.text
+          user = x.fromUser.username
+          ts = Some x.id }
 
     let extractIdFromHtml = 
         function 
         | Regex "\"troupe\":{\"id\":\"([^\"]+)" [ id ] -> Some id
         | _ -> None
     
-    let getMessages (channelId : string) (token : string) = 
-        // sprintf "https://gitter.com/%O" channelId
-        // |> Http.downloadString []
-        // |> Async.mapOption extractIdFromHtml
-        // |> Async.map (sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages")
-        // |> Async.bind 
-        //        (Http.downloadJson<GitterMessageList> [ "x-access-token", token ])
-        // |> Async.map (List.map toMessage)
-        failwith "TODO"
+    let getMessages (url : string) (token : string) = 
+        url
+        |> Http.downloadString []
+        |> Async.mapOption extractIdFromHtml
+        |> Async.map (sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages")
+        |> Async.bind (Http.downloadJson<GitterMessageList> [ "x-access-token", token ])
+        |> Async.map (List.map toMessage)
 
 module Slack = 
     open System.Collections.Generic
@@ -111,8 +111,14 @@ module Telegram =
                 return UnknownErrorResponse
         }
     
-    let sendBroadcast message users =
-        async.Return [ UnknownErrorResponse ]
+    let sendBroadcast token message (users: string list) =
+        async {
+            let bot = TelegramBotClient(token)
+            for user in users do
+                let id = ChatId.op_Implicit user
+                do! bot.SendTextMessageAsync(id, message) |> Async.AwaitTask |> Async.Ignore
+            return users |> List.map (fun _ -> SuccessResponse)
+        }
 
     let repl token callback = 
         let bot = TelegramBotClient(token)
