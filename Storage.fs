@@ -45,7 +45,7 @@ module Storage =
         }
 
     let queryChannelForUser () =
-        querySql<ChannelForUser> "select * from channels" []
+        querySql<Channel> "select * from channels" []
 
     let queryOffsetForChannel () =
         querySql<OffsetForChannel> "select * from offsets" []
@@ -56,8 +56,12 @@ module Storage =
             [ id; offset ]
 
     let queryUserChannels (user : User) = 
-        querySql<Channel> "select * from channels where user = '{0}'" 
-            [ user ]
+        async {
+            let! result =
+                querySql<Channel> "select * from channels where user = '{0}'" 
+                    [ user ]
+            return result
+        }
     let remove (user : User) (id : ChannelId) = 
         execute "delete from channels where user = '{0}' and id = '{1}'" 
             [ user; id ]

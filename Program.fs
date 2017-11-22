@@ -1,6 +1,5 @@
 ﻿open System
 open SlackToTelegram
-open Infrastructure
 module DB = SlackToTelegram.Storage
 module I = SlackToTelegram.Infrastructure
 
@@ -30,7 +29,7 @@ module ChannelUpdater =
         |> List.tryFind (fun x -> x.id = id)
         |> Option.map (fun x -> x.ts)
 
-    let createDownloadCommands (channelForUsers : ChannelForUser list) offsetForChannels =
+    let createDownloadCommands (channelForUsers : Channel list) offsetForChannels =
         channelForUsers
         |> List.map (fun x -> x.id)
         |> List.distinct
@@ -44,7 +43,7 @@ module ChannelUpdater =
         |> List.map DownloadCommand
         |> GroupCommand
 
-    let makeMessagesForUsers channelId (newMessages : Message list) (channelForUsers : ChannelForUser list) =
+    let makeMessagesForUsers channelId (newMessages : Message list) (channelForUsers : Channel list) =
         let users =
             channelForUsers
             |> List.filter (fun x -> x.id = channelId)
@@ -92,7 +91,7 @@ module CommandExecutor =
             let cmd1 =
                 ChannelUpdater.makeMessagesForUsers (getChanneId x.source) msgs cfu
             let cmd2 =
-                ChannelUpdater.makeSaveNewOffsetCommand "" msgs
+                ChannelUpdater.makeSaveNewOffsetCommand (getChanneId x.source) msgs
 
             return GroupCommand [ cmd1 ; cmd2 ]
         }
@@ -130,15 +129,6 @@ module CommandExecutor =
                 do! Async.Sleep 30_000
         }
 
-module Domain = 
-    let parseCommand command = 
-        match String.split command with
-        | "top" :: _ -> Top
-        | "ls" :: _ -> Ls
-        | "add" :: x :: _ -> Add x
-        | "rm" :: x :: _ -> Rm x
-        | _ -> Unknow
-
 module Services = 
     let private tryAddChannel user textId = 
         Source.ComputeSource textId
@@ -146,7 +136,8 @@ module Services =
         |> Async.map (Message.subscribe textId)
     
     let handleTelegramCommand (user : string) (message : string) = 
-        match Domain.parseCommand message with
+        printfn "handleTelegramCommand | %s" message
+        match Message.parseCommand message with
         | Top -> 
             Slack.getSlackChannels() 
             |> Async.map Message.makeMessageForTopChannels

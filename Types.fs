@@ -24,14 +24,10 @@ type User = string
 type Token = string
 type ChannelId = string
 
+[<CLIMutable>]
 type Channel = 
     { id : ChannelId
       user : User }
-
-[<CLIMutable>]
-type ChannelForUser = 
-    { user : User
-      id : ChannelId }
 
 [<CLIMutable>]
 type OffsetForChannel =
@@ -47,7 +43,6 @@ type Message =
       user : string
       ts : string option }
 
-[<Obsolete>]
 type TextMode = 
     | Plane
     | Styled

@@ -26,6 +26,16 @@ module Async =
             for x in xs do
                 do! f x
         }
+
+    let rec seq axs =
+        async {
+            match axs with
+            | [] -> return []
+            | ax :: axs ->
+                let! rx = ax
+                let! rxs = seq axs
+                return rx :: rxs
+        }
     
     let bind f a = async { let! r = a
                            return! f r }

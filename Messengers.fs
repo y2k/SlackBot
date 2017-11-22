@@ -85,16 +85,16 @@ module Telegram =
         | BotBlockedResponse
         | UnknownErrorResponse
     
-    let sendToTelegramSingle (token : Token) (user : string) html message = 
+    let sendToTelegramSingle (token : Token) (user : string) textMode message = 
         async { 
             try 
                 let bot = TelegramBotClient(token)
                 let userId = user |> ChatId.op_Implicit
-                do! match html with
+                do! match textMode with
                     | Styled -> 
                         bot.SendTextMessageAsync
                             (userId, message, 
-                             parseMode = Types.Enums.ParseMode.Html)
+                             parseMode = Enums.ParseMode.Html)
                     | Plane -> bot.SendTextMessageAsync(userId, message)
                     |> Async.AwaitTask
                     |> Async.Ignore
@@ -103,7 +103,7 @@ module Telegram =
             | :? AggregateException as ae -> 
                 printfn "Telegram aggregate error: %O" ae.InnerException.Message
                 match ae.InnerException with
-                | :? Telegram.Bot.Exceptions.ApiRequestException -> 
+                | :? Exceptions.ApiRequestException -> 
                     return BotBlockedResponse
                 | _ -> return UnknownErrorResponse
             | ex -> 
@@ -112,24 +112,20 @@ module Telegram =
         }
     
     let sendBroadcast token message (users: string list) =
-        async {
-            let bot = TelegramBotClient(token)
-            for user in users do
-                let id = ChatId.op_Implicit user
-                do! bot.SendTextMessageAsync(id, message) |> Async.AwaitTask |> Async.Ignore
-            return users |> List.map (fun _ -> SuccessResponse)
-        }
+        users
+        |> List.map (fun u -> sendToTelegramSingle token u Styled message)
+        |> Async.seq
 
     let repl token callback = 
         let bot = TelegramBotClient(token)
-        bot.OnUpdate |> Event.add (fun x -> 
-                            async { 
-                                try 
-                                    let user = string x.Update.Message.From.Id
-                                    let! response = callback user 
-                                                        x.Update.Message.Text
-                                    do! sendToTelegramSingle token user Styled 
-                                            response |> Async.Ignore
-                                with e -> printfn "ERROR: %O" e
-                            }
-                            |> Async.Start)
+        bot.OnUpdate 
+        |> Event.add (fun x -> 
+            async { 
+                try 
+                    let user = string x.Update.Message.From.Id
+                    let! response = callback user x.Update.Message.Text
+                    do! sendToTelegramSingle token user Styled response 
+                        |> Async.Ignore
+                with e -> printfn "ERROR: %O" e
+            } |> Async.Start)
+        bot.StartReceiving()
