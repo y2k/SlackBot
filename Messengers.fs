@@ -20,7 +20,7 @@ module Gitter =
     let toMessage (x : GitterMessage) = 
         { text = x.text
           user = x.fromUser.username
-          ts = Some x.id }
+          ts = x.id }
 
     let extractIdFromHtml = 
         function 

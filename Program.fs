@@ -56,7 +56,7 @@ module ChannelUpdater =
         SendToUserMessageCommand { text = text ; userIds = users }
 
     let makeSaveNewOffsetCommand channelId (newMessages : Message list) =
-        let offset = newMessages |> List.tryPick (fun x -> x.ts)
+        let offset = newMessages |> List.map (fun x -> x.ts) |> List.tryHead
         match offset with
         | Some o -> SaveOffsetCommand { channelId = channelId ; offset = o }
         | None -> EmptyCommand

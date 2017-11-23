@@ -41,7 +41,7 @@ type ChannelOffset =
 type Message = 
     { text : string
       user : string
-      ts : string option }
+      ts : string }
 
 type TextMode = 
     | Plane
