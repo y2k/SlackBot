@@ -1,6 +1,5 @@
 namespace SlackToTelegram
 
-open System
 open Infrastructure
 
 type Source = 
@@ -8,8 +7,8 @@ type Source =
     | Gitter of string
     static member ComputeSource id =
         match id with
-        | Regex "https://gitter\\.im/\\w{1,10}/\\w{1,10}" [] -> Some <| Gitter id
-        | Regex "[\\w_-]{1,10}" [] -> Some <| Slack id
+        | Regex "^https://gitter\\.im/[\\w\\._-]{1,40}/[\\w\\._-]{1,40}$" [] -> Some <| Gitter id
+        | Regex "^[\\w_-]{1,16}$" [] -> Some <| Slack id
         | _ -> None
 
 type Command = 

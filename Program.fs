@@ -61,42 +61,30 @@ module ChannelUpdater =
         | Some o -> SaveOffsetCommand { channelId = channelId ; offset = o }
         | None -> EmptyCommand
 
-module CommandExecutor =
+    let private filterNewMessages optOffset messages =
+        match optOffset with
+        | None -> messages
+        | Some offset ->
+            messages
+            |> List.takeWhile (fun x -> x.ts <> offset)
 
-    let sendToUserMessageCommand token (x : SendToUserMessageCommand) = 
+    let filterChannelForNewsAndOffset source cfu optOffset messages =
+        let newMessages = filterNewMessages optOffset messages
+        let getChanneId = function | Slack name -> name | Gitter url -> url
+        let cmd1 =
+            makeMessagesForUsers (getChanneId source) newMessages cfu
+        let cmd2 =
+            makeSaveNewOffsetCommand (getChanneId source) newMessages
+        GroupCommand [ cmd1 ; cmd2 ]
+
+module CommandExecutor =
+    let private sendToUserMessageCommand token (x : SendToUserMessageCommand) = 
         Telegram.sendBroadcast token x.text x.userIds |> Async.Ignore
 
-    let saveOffset (x : SaveOffsetCommand) = 
+    let private saveOffset (x : SaveOffsetCommand) = 
         Storage.saveOffset x.channelId x.offset
 
-    let private getChanneId =
-        function
-        | Slack name -> name
-        | Gitter url -> url
-
-    let download (x : DownloadCommand) cfu gitterToken =
-        async {
-            let! msgs =
-                match x.source with
-                | Slack name -> 
-                    async {
-                        let! chanIds = Slack.getSlackChannels ()
-                        let id = chanIds |> List.filter (fun x -> x.name = name) 
-                                         |> List.map (fun x -> string x.channel_id)
-                                         |> List.head
-                        return! Slack.getSlackMessages id
-                    }
-                | Gitter url -> Gitter.getMessages url gitterToken
-
-            let cmd1 =
-                ChannelUpdater.makeMessagesForUsers (getChanneId x.source) msgs cfu
-            let cmd2 =
-                ChannelUpdater.makeSaveNewOffsetCommand (getChanneId x.source) msgs
-
-            return GroupCommand [ cmd1 ; cmd2 ]
-        }
-
-    let rec execute cmd gitterToken tgToken = 
+    let rec private execute cmd gitterToken tgToken = 
         async {
             do! match cmd with
                 | Initialize -> 
@@ -115,14 +103,17 @@ module CommandExecutor =
                 | DownloadCommand x -> 
                     async {
                         let! cfu = Storage.queryChannelForUser ()
-                        let! cmd2 = download x cfu gitterToken
-                        do! execute cmd2 gitterToken tgToken
+                        do! match x.source with
+                            | Slack name -> Slack.getSlackMessages name
+                            | Gitter url -> Gitter.getMessages url gitterToken
+                            |> Async.map (ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset)
+                            |> Async.bind (fun cmd2 -> execute cmd2 gitterToken tgToken)
                     }
                 | SendToUserMessageCommand x -> sendToUserMessageCommand tgToken x
                 | EmptyCommand -> async.Zero ()
         }
 
-    let executeCycle gitter telegramToken =
+    let start gitter telegramToken =
         async {
             while true do
                 do! execute Initialize gitter telegramToken
@@ -157,6 +148,6 @@ let main _ =
 
     Telegram.repl telegramToken Services.handleTelegramCommand
 
-    CommandExecutor.executeCycle gitterToken telegramToken
+    CommandExecutor.start gitterToken telegramToken
     |> Async.RunSynchronously
     0

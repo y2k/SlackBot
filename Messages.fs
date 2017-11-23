@@ -41,9 +41,9 @@ let makeMessageFromUserChannels (xs: Channel list) =
     | channels -> 
         channels
         |> List.sortBy (fun x -> x.id)
-        |> List.map (fun x -> "<code>" + x.id + "</code>")
-        |> List.reduce (fun a x -> a + ", " + x)
-        |> (+) "Каналы на которые вы подписаны: "
+        |> List.map (fun x -> "• <code>" + x.id + "</code>")
+        |> List.reduce (fun a x -> a + "\n" + x)
+        |> (+) "Каналы на которые вы подписаны:\n"
 
 let help = "<b>Команды бота:</b>
 • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
@@ -56,22 +56,10 @@ let help = "<b>Команды бота:</b>
 
 let makeUpdateMessage msgs (chName : string) = 
     msgs
+    |> List.truncate 10
     |> List.fold 
            (fun a x -> 
            "(<b>" + x.user + "</b>) " 
            + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
            + a) ""
     |> sprintf "<pre>Новые сообщения в канале %s</pre>\n\n%s"  (chName.ToUpper())
-
-// let makeUpdateMessage' msgs (chName : string) = 
-//     match msgs with
-//     | [] -> None
-//     | _ ->
-//         msgs
-//         |> List.fold 
-//                (fun a x -> 
-//                "(<b>" + x.user + "</b>) " 
-//                + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
-//                + a) ""
-//         |> sprintf "<b>| Новые сообщения в канале %s |</b>\n\n%s"  (chName.ToUpper())
-//         |> Some

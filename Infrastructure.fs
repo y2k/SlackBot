@@ -112,7 +112,6 @@ module Infrastructure =
 module Utils = 
     open System
     open System.Collections.Generic
-    open System.Reactive.Linq
     
     let tryGet (dict : Dictionary<'k, 'v>) (key : 'k) = 
         let (success, value) = dict.TryGetValue(key)
