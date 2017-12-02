@@ -2,6 +2,7 @@ namespace SlackToTelegram
 
 module Storage = 
     open System
+    open System.IO
     open System.Threading
     open Dapper
     open Microsoft.Data.Sqlite
@@ -16,13 +17,15 @@ module Storage =
         String.Format(template, xs)
     
     let private connection = 
-        lazy (let db = new SqliteConnection("DataSource=main.db")
-              db.Execute("
-            create table if not exists channels (id TEXT, user TEXT);
-            drop table if exists offsets;
-            create table offsets (id TEXT, ts TEXT);") 
-              |> ignore
-              db)
+        lazy (
+            Directory.CreateDirectory("resources") |> ignore
+            let db = new SqliteConnection("DataSource=resources/main.db")
+            db.Execute("
+                create table if not exists channels (id TEXT, user TEXT);
+                drop table if exists offsets;
+                create table offsets (id TEXT, ts TEXT);") 
+            |> ignore
+            db)
     
     let private lock = new SemaphoreSlim(1)
     

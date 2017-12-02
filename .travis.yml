@@ -1,0 +1,22 @@
+sudo: required
+dist: trusty  
+services:
+  - docker
+env:
+  global:
+    - DOCKER_USERNAME=y2khub
+    - DOCKER_NAME=slackbot
+    - DOCKER_ID=y2khub/slackbot
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+  - echo $DEPLOY_KEY | base64 -D > deployment_key.txt
+  - chmod 600 deployment_key.txt
+script:
+  - docker build --rm -f Dockerfile -t $DOCKER_ID .
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - docker push $DOCKER_ID
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: ssh -o "StrictHostKeyChecking=no" -i deployment_key.txt $DEPLOY_AUTHORITY "docker pull $DOCKER_ID && docker rm -f $DOCKER_NAME || true && docker run --name $DOCKER_NAME -d -v $HOME/$DOCKER_NAME:/app/resources -e GITTER_TOKEN=$GITTER_TOKEN -e TELEGRAM_TOKEN=$TELEGRAM_TOKEN $DOCKER_ID"

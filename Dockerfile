@@ -1,10 +1,20 @@
-FROM microsoft/dotnet:latest
+# ###############################
+# Build stage
+# ###############################
 
-LABEL Name=SlackToTelegramBot Version=0.0.1 
-ARG source=.
+FROM microsoft/dotnet:2.0.3-sdk-stretch
+
 WORKDIR /app
-COPY $source .
+COPY . /app
+RUN dotnet publish -c Release -r linux-x64 --self-contained false -o out
 
-RUN dotnet restore
+# ###############################
+# Deploy stage
+# ###############################
 
-CMD ["/bin/bash", "-c", "dotnet run $TOKEN"]
+FROM microsoft/dotnet:2.0.3-runtime-stretch
+
+WORKDIR /app
+COPY --from=0 /app/out .
+
+ENTRYPOINT ["dotnet", "SlackToTelegramBot.dll"]
