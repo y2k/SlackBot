@@ -10,7 +10,7 @@ env:
 before_install:
   - sudo apt-get update
   - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-  - echo $DEPLOY_KEY | base64 -D > deployment_key.txt
+  - echo $DEPLOY_KEY | base64 --decode > deployment_key.txt
   - chmod 600 deployment_key.txt
 script:
   - docker build --rm -f Dockerfile -t $DOCKER_ID .
