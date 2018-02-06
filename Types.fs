@@ -1,5 +1,6 @@
 namespace SlackToTelegram
 
+open System
 open Infrastructure
 
 type Source = 
@@ -45,3 +46,8 @@ type Message =
 type TextMode = 
     | Plane
     | Styled
+
+type StorageCmd = 
+    | QueryUsers of AsyncReplyChannel<Channel list> 
+    | QueryChannels of AsyncReplyChannel<OffsetForChannel list> 
+    | Execute of String * Object list * AsyncReplyChannel<Unit>

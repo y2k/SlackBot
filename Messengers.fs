@@ -31,10 +31,9 @@ module Gitter =
         url
         |> Http.downloadString []
         |> Async.mapOption extractIdFromHtml
-        |> Async.map (sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages")
-        |> Async.bind (Http.downloadJson<GitterMessageList> [ "x-access-token", token ])
-        |> Async.map (List.map toMessage)
-        |> Async.map (List.rev)
+        <!> sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages"
+        >>= Http.downloadJson<GitterMessageList> [ "x-access-token", token ]
+        <!> (List.map toMessage >> List.rev)
 
 module Slack = 
     open System.Collections.Generic
@@ -69,7 +68,7 @@ module Slack =
     let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
         |> Http.downloadJson<ChannelsResponse> []
-        |> Async.map (fun x -> x.channels |> Array.toList)
+        <!> fun x -> x.channels |> Array.toList
 
     let private getChannelIdFromName name (chanIds: SlackChannel list) =
         chanIds |> List.filter (fun x -> x.name = name) 
@@ -78,10 +77,10 @@ module Slack =
 
     let getSlackMessages name = 
         getSlackChannels ()
-        |> Async.map (getChannelIdFromName name)
-        |> Async.map (sprintf "https://api.slackarchive.io/v1/messages?size=5&channel=%s")
-        |> Async.bind (Http.downloadJson<MessagesResponse> [])
-        |> Async.map fixUserNames
+        <!> getChannelIdFromName name
+        <!> sprintf "https://api.slackarchive.io/v1/messages?size=5&channel=%s"
+        >>= Http.downloadJson<MessagesResponse> []
+        <!> fixUserNames
 
 module Telegram = 
     open System

@@ -1,5 +1,6 @@
 ﻿open System
 open SlackToTelegram
+
 module DB = SlackToTelegram.Storage
 module I = SlackToTelegram.Infrastructure
 
@@ -16,12 +17,12 @@ type SendToUserMessageCommand =
       userIds : User list }
 
 type Command =
-| Initialize
-| EmptyCommand
-| GroupCommand of Command list
-| SaveOffsetCommand of SaveOffsetCommand
-| DownloadCommand of DownloadCommand
-| SendToUserMessageCommand of SendToUserMessageCommand
+    | Initialize
+    | EmptyCommand
+    | GroupCommand of Command list
+    | SaveOffsetCommand of SaveOffsetCommand
+    | DownloadCommand of DownloadCommand
+    | SendToUserMessageCommand of SendToUserMessageCommand
 
 module ChannelUpdater =
     let tryFindOffset offsetForChannels id =
@@ -78,39 +79,29 @@ module ChannelUpdater =
         GroupCommand [ cmd1 ; cmd2 ]
 
 module CommandExecutor =
-    let private sendToUserMessageCommand token (x : SendToUserMessageCommand) = 
-        Telegram.sendBroadcast token x.text x.userIds |> Async.Ignore
-
-    let private saveOffset (x : SaveOffsetCommand) = 
-        Storage.saveOffset x.channelId x.offset
-
     let rec private execute cmd gitterToken tgToken = 
         async {
-            do! match cmd with
-                | Initialize -> 
-                    async {
-                        let! cfu = Storage.queryChannelForUser ()
-                        let! ofc = Storage.queryOffsetForChannel ()
-                        let cmd = ChannelUpdater.createDownloadCommands cfu ofc
-                        do! execute cmd gitterToken tgToken
-                    }
-                | GroupCommand subCmds -> 
-                    async {
-                        for subCmd in subCmds do
-                            do! execute subCmd gitterToken tgToken
-                    }
-                | SaveOffsetCommand x -> saveOffset x
-                | DownloadCommand x -> 
-                    async {
-                        let! cfu = Storage.queryChannelForUser ()
-                        do! match x.source with
-                            | Slack name -> Slack.getSlackMessages name
-                            | Gitter url -> Gitter.getMessages url gitterToken
-                            |> Async.map (ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset)
-                            |> Async.bind (fun cmd2 -> execute cmd2 gitterToken tgToken)
-                    }
-                | SendToUserMessageCommand x -> sendToUserMessageCommand tgToken x
-                | EmptyCommand -> async.Zero ()
+            match cmd with
+            | Initialize -> 
+                let! cfu = Storage.agent.PostAndAsyncReply QueryUsers
+                let! ofc = Storage.agent.PostAndAsyncReply QueryChannels
+                let cmd = ChannelUpdater.createDownloadCommands cfu ofc
+                do! execute cmd gitterToken tgToken
+            | GroupCommand subCmds -> 
+                for subCmd in subCmds do
+                    do! execute subCmd gitterToken tgToken
+            | SaveOffsetCommand x -> 
+                do! Storage.saveOffset x.channelId x.offset
+            | DownloadCommand x -> 
+                let! cfu = Storage.agent.PostAndAsyncReply QueryUsers
+                do! match x.source with
+                    | Slack name -> Slack.getSlackMessages name
+                    | Gitter url -> Gitter.getMessages url gitterToken
+                    <!> ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset
+                    >>= fun cmd2 -> execute cmd2 gitterToken tgToken
+            | SendToUserMessageCommand x -> 
+                do! Telegram.sendBroadcast tgToken x.text x.userIds |> Async.Ignore
+            | EmptyCommand -> do! async.Zero ()
         }
 
     let start gitter telegramToken =
@@ -124,17 +115,18 @@ module Services =
     let private tryAddChannel user textId = 
         Source.ComputeSource textId
         |> Option.mapAsync (fun _ -> DB.add user textId)
-        |> Async.map (Message.subscribe textId)
+        <!> Message.subscribe textId
     
     let handleTelegramCommand (user : string) (message : string) = 
         printfn "handleTelegramCommand | %s" message
         match Message.parseCommand message with
         | Top -> 
             Slack.getSlackChannels() 
-            |> Async.map Message.makeMessageForTopChannels
+            <!> Message.makeMessageForTopChannels
         | Ls -> 
-            DB.queryUserChannels user 
-            |> Async.map Message.makeMessageFromUserChannels
+            DB.agent.PostAndAsyncReply QueryUsers
+            <!> List.filter (fun x -> x.user = user)
+            <!> Message.makeMessageFromUserChannels
         | Add id -> tryAddChannel user id
         | Rm id -> DB.remove user id |> Async.ignore (Message.unsubscribe id)
         | Unknow -> Message.help |> async.Return

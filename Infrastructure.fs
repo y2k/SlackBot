@@ -3,6 +3,15 @@ namespace SlackToTelegram
 module String = 
     let split (s : string) = s.Split(' ') |> Seq.toList
 
+[<AutoOpen>]
+module Operators = 
+    let inline (>>=) a f = async.Bind (a, f)
+    let (<!>) a f =
+        async {
+            let! x = a
+            return f x
+        }
+
 module Async = 
     let map3 f o =
         async {
@@ -37,10 +46,6 @@ module Async =
                 return rx :: rxs
         }
     
-    let bind f a = async { let! r = a
-                           return! f r }
-    let map f a = async { let! r = a
-                          return f r }
     let map2 f a = async { let! (r1, r2) = a
                            return f r1 r2 }
     let ignore x a = async { let! _ = a
@@ -56,7 +61,7 @@ module Option =
     let mapAsync f o =
         async {
             match o with
-            | Some x -> return! f x |> Async.map Some
+            | Some x -> return! f x <!> Some
             | None -> return None
         }
 
@@ -99,8 +104,8 @@ module Infrastructure =
         else None
     
     let loop action = 
-        let rec loopInner() = 
-            async { 
+        let rec loopInner () = 
+            async {
                 try 
                     do! action()
                 with e -> printfn "ERROR: %O" e
@@ -115,7 +120,6 @@ module Utils =
     
     let tryGet (dict : Dictionary<'k, 'v>) (key : 'k) = 
         let (success, value) = dict.TryGetValue(key)
-        if (success) then Some value
-        else None
+        if success then Some value else None
     
-    let nowUtc() = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
+    let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds
