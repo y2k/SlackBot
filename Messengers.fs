@@ -1,5 +1,7 @@
 namespace SlackToTelegram
 
+open FSharpPlus
+
 open SlackToTelegram.Utils
 open Infrastructure
 
@@ -31,9 +33,9 @@ module Gitter =
         url
         |> Http.downloadString []
         |> Async.mapOption extractIdFromHtml
-        <!> sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages"
+        |>> sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages"
         >>= Http.downloadJson<GitterMessageList> [ "x-access-token", token ]
-        <!> (List.map toMessage >> List.rev)
+        |>> (List.map toMessage >> List.rev)
 
 module Slack = 
     open System.Collections.Generic
@@ -68,7 +70,7 @@ module Slack =
     let getSlackChannels() = 
         "https://api.slackarchive.io/v1/channels?team_id=T09229ZC6"
         |> Http.downloadJson<ChannelsResponse> []
-        <!> fun x -> x.channels |> Array.toList
+        |>> fun x -> x.channels |> Array.toList
 
     let private getChannelIdFromName name (chanIds: SlackChannel list) =
         chanIds |> List.filter (fun x -> x.name = name) 
@@ -77,10 +79,10 @@ module Slack =
 
     let getSlackMessages name = 
         getSlackChannels ()
-        <!> getChannelIdFromName name
-        <!> sprintf "https://api.slackarchive.io/v1/messages?size=5&channel=%s"
+        |>> getChannelIdFromName name
+        |>> sprintf "https://api.slackarchive.io/v1/messages?size=5&channel=%s"
         >>= Http.downloadJson<MessagesResponse> []
-        <!> fixUserNames
+        |>> fixUserNames
 
 module Telegram = 
     open System
@@ -118,7 +120,7 @@ module Telegram =
                 return UnknownErrorResponse
         }
     
-    let sendBroadcast token message (users: string list) =
+    let sendBroadcast token message users =
         users
         |> List.map (fun u -> sendToTelegramSingle token u Styled message)
         |> Async.seq

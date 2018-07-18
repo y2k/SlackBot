@@ -1,16 +1,9 @@
 namespace SlackToTelegram
 
+open FSharpPlus
+
 module String = 
     let split (s : string) = s.Split(' ') |> Seq.toList
-
-[<AutoOpen>]
-module Operators = 
-    let inline (>>=) a f = async.Bind (a, f)
-    let (<!>) a f =
-        async {
-            let! x = a
-            return f x
-        }
 
 module Async = 
     let map3 f o =
@@ -56,14 +49,6 @@ module Async =
     let zip a2 a1 = async { let! r1 = a1
                             let! r2 = a2
                             return r2, r1 }
-
-module Option =
-    let mapAsync f o =
-        async {
-            match o with
-            | Some x -> return! f x <!> Some
-            | None -> return None
-        }
 
 module Http = 
     open System

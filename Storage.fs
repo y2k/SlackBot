@@ -6,6 +6,8 @@ open System.Threading
 open Dapper
 open Microsoft.Data.Sqlite
 
+open FSharpPlus
+
 let TelegramId = "_ _"
 
 let private format template args = 
@@ -49,7 +51,7 @@ let private execute sql args =
 let private querySql2<'T> sql args = 
     connection.Value.QueryAsync<'T>(format sql args) 
     |> Async.AwaitTask
-    <!> Seq.toList
+    |>> Seq.toList
 
 let private execute2 sql args = 
     connection.Value.ExecuteAsync(format sql args)
@@ -63,13 +65,13 @@ let agent = MailboxProcessor.Start(fun inbox ->
                         do! match cmd with
                             | QueryUsers reply -> 
                                 querySql2<Channel> "select * from channels" []
-                                <!> reply.Reply
+                                |>> reply.Reply
                             | QueryChannels reply -> 
                                 querySql2<OffsetForChannel> "select * from offsets" []
-                                <!> reply.Reply
+                                |>> reply.Reply
                             | Execute(sql, args, reply) -> 
                                 execute2 sql args
-                                <!> reply.Reply
+                                |>> reply.Reply
                         return! loop ()
                     }
                 loop ())

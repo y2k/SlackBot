@@ -1,6 +1,8 @@
 ﻿open System
 open SlackToTelegram
 
+open FSharpPlus
+
 module DB = SlackToTelegram.Storage
 module I = SlackToTelegram.Infrastructure
 
@@ -28,11 +30,11 @@ module ChannelUpdater =
     let tryFindOffset offsetForChannels id =
         offsetForChannels
         |> List.tryFind (fun x -> x.id = id)
-        |> Option.map (fun x -> x.ts)
+        |>> fun x -> x.ts
 
     let createDownloadCommands (channelForUsers : Channel list) offsetForChannels =
         channelForUsers
-        |> List.map (fun x -> x.id)
+        |>> fun x -> x.id
         |> List.distinct
         |> List.choose 
             (fun id -> 
@@ -41,14 +43,14 @@ module ChannelUpdater =
                     (fun source -> 
                         { source = source
                           offset = tryFindOffset offsetForChannels id }))
-        |> List.map DownloadCommand
+        |>> DownloadCommand
         |> GroupCommand
 
     let makeMessagesForUsers channelId (newMessages : Message list) (channelForUsers : Channel list) =
         let users =
             channelForUsers
             |> List.filter (fun x -> x.id = channelId)
-            |> List.map (fun x -> x.user)
+            |>> fun x -> x.user
             |> fun xs -> if List.isEmpty newMessages then [] else xs
 
         let text =
@@ -57,10 +59,11 @@ module ChannelUpdater =
         SendToUserMessageCommand { text = text ; userIds = users }
 
     let makeSaveNewOffsetCommand channelId (newMessages : Message list) =
-        let offset = newMessages |> List.map (fun x -> x.ts) |> List.tryHead
-        match offset with
-        | Some o -> SaveOffsetCommand { channelId = channelId ; offset = o }
-        | None -> EmptyCommand
+        newMessages
+        |>> fun x -> x.ts
+        |> List.tryHead
+        |>> fun offset -> SaveOffsetCommand { channelId = channelId; offset = offset }
+        |> Option.defaultValue EmptyCommand
 
     let private filterNewMessages optOffset messages =
         match optOffset with
@@ -97,7 +100,7 @@ module CommandExecutor =
                 do! match x.source with
                     | Slack name -> Slack.getSlackMessages name
                     | Gitter url -> Gitter.getMessages url gitterToken
-                    <!> ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset
+                    |>> ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset
                     >>= fun cmd2 -> execute cmd2 gitterToken tgToken
             | SendToUserMessageCommand x -> 
                 do! Telegram.sendBroadcast tgToken x.text x.userIds |> Async.Ignore
@@ -114,19 +117,21 @@ module CommandExecutor =
 module Services = 
     let private tryAddChannel user textId = 
         Source.ComputeSource textId
-        |> Option.mapAsync (fun _ -> DB.add user textId)
-        <!> Message.subscribe textId
+        |> function
+           | Some _ -> Some <!> DB.add user textId
+           | None -> async.Return None
+        |>> Message.subscribe textId
     
     let handleTelegramCommand (user : string) (message : string) = 
         printfn "handleTelegramCommand | %s" message
         match Message.parseCommand message with
         | Top -> 
             Slack.getSlackChannels() 
-            <!> Message.makeMessageForTopChannels
+            |>> Message.makeMessageForTopChannels
         | Ls -> 
             DB.agent.PostAndAsyncReply QueryUsers
-            <!> List.filter (fun x -> x.user = user)
-            <!> Message.makeMessageFromUserChannels
+            |>> List.filter (fun x -> x.user = user)
+            |>> Message.makeMessageFromUserChannels
         | Add id -> tryAddChannel user id
         | Rm id -> DB.remove user id |> Async.ignore (Message.unsubscribe id)
         | Unknow -> Message.help |> async.Return
