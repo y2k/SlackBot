@@ -5,12 +5,8 @@ module String =
 
 [<AutoOpen>]
 module Operators = 
-    let inline (>>=) a f = async.Bind (a, f)
-    let (<!>) a f =
-        async {
-            let! x = a
-            return f x
-        }
+    let inline (>>=) x f = async.Bind (x, f)
+    let inline (>>-) x f = async.Bind (x, async.Return << f)
 
 module Async = 
     let map3 f o =
@@ -57,14 +53,6 @@ module Async =
                             let! r2 = a2
                             return r2, r1 }
 
-module Option =
-    let mapAsync f o =
-        async {
-            match o with
-            | Some x -> return! f x <!> Some
-            | None -> return None
-        }
-
 module Http = 
     open System
     open System.IO
@@ -76,7 +64,6 @@ module Http =
     let downloadJson<'a> (headers : (string * string) list) (url : string) = 
         async { 
             let req = new HttpRequestMessage(HttpMethod.Get, url)
-            req.Headers.Referrer <- Uri("https://kotlinlang.slackarchive.io/")
             for k, v in headers do
                 req.Headers.Add(k, v)
             let! resp = httpClient.SendAsync(req) |> Async.AwaitTask

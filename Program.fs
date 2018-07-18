@@ -97,7 +97,7 @@ module CommandExecutor =
                 do! match x.source with
                     | Slack name -> Slack.getSlackMessages name
                     | Gitter url -> Gitter.getMessages url gitterToken
-                    <!> ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset
+                    >>- ChannelUpdater.filterChannelForNewsAndOffset x.source cfu x.offset
                     >>= fun cmd2 -> execute cmd2 gitterToken tgToken
             | SendToUserMessageCommand x -> 
                 do! Telegram.sendBroadcast tgToken x.text x.userIds |> Async.Ignore
@@ -113,20 +113,23 @@ module CommandExecutor =
 
 module Services = 
     let private tryAddChannel user textId = 
-        Source.ComputeSource textId
-        |> Option.mapAsync (fun _ -> DB.add user textId)
-        <!> Message.subscribe textId
+        async {
+            let source = Source.ComputeSource textId
+            do! match source with
+                | Some _ -> DB.add user textId
+                | None   -> async.Zero ()
+            return Message.subscribe textId source
+        }
     
     let handleTelegramCommand (user : string) (message : string) = 
         printfn "handleTelegramCommand | %s" message
         match Message.parseCommand message with
         | Top -> 
             Slack.getSlackChannels() 
-            <!> Message.makeMessageForTopChannels
+            >>- Message.makeMessageForTopChannels
         | Ls -> 
             DB.agent.PostAndAsyncReply QueryUsers
-            <!> List.filter (fun x -> x.user = user)
-            <!> Message.makeMessageFromUserChannels
+            >>- (List.filter (fun x -> x.user = user) >> Message.makeMessageFromUserChannels)
         | Add id -> tryAddChannel user id
         | Rm id -> DB.remove user id |> Async.ignore (Message.unsubscribe id)
         | Unknow -> Message.help |> async.Return
