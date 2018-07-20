@@ -5,6 +5,7 @@ module String =
 
 [<AutoOpen>]
 module Operators = 
+    let inline uncurry f a b = f (a, b)
     let inline (>>=) x f = async.Bind (x, f)
     let inline (>>-) x f = async.Bind (x, async.Return << f)
 

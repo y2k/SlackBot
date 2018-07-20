@@ -83,17 +83,17 @@ module CommandExecutor =
         async {
             match cmd with
             | Initialize -> 
-                let! cfu = Storage.agent.PostAndAsyncReply QueryUsers
-                let! ofc = Storage.agent.PostAndAsyncReply QueryChannels
+                let! cfu = Storage.db.PostAndAsyncReply QueryUsers
+                let! ofc = Storage.db.PostAndAsyncReply QueryChannels
                 let cmd = ChannelUpdater.createDownloadCommands cfu ofc
                 do! execute cmd gitterToken tgToken
             | GroupCommand subCmds -> 
                 for subCmd in subCmds do
                     do! execute subCmd gitterToken tgToken
             | SaveOffsetCommand x -> 
-                do! Storage.saveOffset x.channelId x.offset
+                do! Storage.db.PostAndAsyncReply (fun r -> SaveOffset (x.channelId, x.offset, r))
             | DownloadCommand x -> 
-                let! cfu = Storage.agent.PostAndAsyncReply QueryUsers
+                let! cfu = Storage.db.PostAndAsyncReply QueryUsers
                 do! match x.source with
                     | Slack name -> Slack.getSlackMessages name
                     | Gitter url -> Gitter.getMessages url gitterToken
@@ -116,7 +116,7 @@ module Services =
         async {
             let source = Source.ComputeSource textId
             do! match source with
-                | Some _ -> DB.add user textId
+                | Some _ -> DB.db.PostAndAsyncReply (fun r -> AddCmd (user, textId, r))
                 | None   -> async.Zero ()
             return Message.subscribe textId source
         }
@@ -128,10 +128,11 @@ module Services =
             Slack.getSlackChannels
             >>- Message.makeMessageForTopChannels
         | Ls -> 
-            DB.agent.PostAndAsyncReply QueryUsers
+            DB.db.PostAndAsyncReply QueryUsers
             >>- (List.filter (fun x -> x.user = user) >> Message.makeMessageFromUserChannels)
         | Add id -> tryAddChannel user id
-        | Rm id -> DB.remove user id |> Async.ignore (Message.unsubscribe id)
+        | Rm id -> DB.db.PostAndAsyncReply (fun r -> Remove (user, id, r))
+                   |> Async.ignore (Message.unsubscribe id)
         | Unknow -> Message.help |> async.Return
 
 [<EntryPoint>]

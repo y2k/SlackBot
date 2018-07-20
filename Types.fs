@@ -50,4 +50,7 @@ type TextMode =
 type StorageCmd = 
     | QueryUsers of AsyncReplyChannel<Channel list> 
     | QueryChannels of AsyncReplyChannel<OffsetForChannel list> 
-    | Execute of String * Object list * AsyncReplyChannel<Unit>
+    | Execute of string * obj list * AsyncReplyChannel<unit>
+    | SaveOffset of id : string  * offset : string * AsyncReplyChannel<unit>
+    | Remove of user : User * id : ChannelId * AsyncReplyChannel<unit>
+    | AddCmd of user : User * id : ChannelId * AsyncReplyChannel<unit>
