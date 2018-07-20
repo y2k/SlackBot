@@ -14,25 +14,20 @@ let parseCommand command =
     | "rm" :: x :: _ -> Rm x
     | _ -> Unknow
 
-let subscribe channel = 
-    function 
+let subscribe channel = function 
     | Some _ -> "Подписка на <code>" + channel + "</code> выполнена успешно"
     | None -> 
         "Подписка на <code>" + channel 
         + "</code> не удалась. Неподдерживаемый тип подписок."
 
-let unsubscribe x = "Отписка от <code>" + x + "</code> выполнена успешно"
+let unsubscribe = sprintf "Отписка от <code>%s</code> выполнена успешно"
 
 let makeMessageForTopChannels channels = 
     channels
     |> List.filter (fun x -> x.num_members >= 100)
     |> List.sortByDescending (fun x -> x.num_members)
-    |> List.map 
-           (fun x -> 
-           sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members 
-               x.purpose.value)
-    |> List.reduce (fun a x -> a + "\n" + x)
-    |> (+) "<b>Список доступных каналов:</b> \n"
+    |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose)
+    |> List.fold (sprintf "%s\b%s") "<b>Список доступных каналов:</b> \n"
 
 let makeMessageFromUserChannels (xs: Channel list) = 
     match xs with
@@ -42,8 +37,7 @@ let makeMessageFromUserChannels (xs: Channel list) =
         channels
         |> List.sortBy (fun x -> x.id)
         |> List.map (fun x -> "• <code>" + x.id + "</code>")
-        |> List.reduce (fun a x -> a + "\n" + x)
-        |> (+) "Каналы на которые вы подписаны:\n"
+        |> List.fold (sprintf "%s\b%s") "Каналы на которые вы подписаны:\n"
 
 let help = "<b>Команды бота:</b>
 • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
@@ -57,9 +51,8 @@ let help = "<b>Команды бота:</b>
 let makeUpdateMessage msgs (chName : string) = 
     msgs
     |> List.truncate 10
-    |> List.fold 
-           (fun a x -> 
-           "(<b>" + x.user + "</b>) " 
-           + WebUtility.HtmlEncode(WebUtility.HtmlDecode(x.text)) + "\n\n" 
-           + a) ""
-    |> sprintf "<pre>Новые сообщения в канале %s</pre>\n\n%s"  (chName.ToUpper())
+    |> List.map (fun x -> sprintf "(<b>%s</b>) %s" 
+                              x.user 
+                              (x.text |> WebUtility.HtmlDecode |> WebUtility.HtmlEncode))
+    |> List.fold (sprintf "%s\n\n%s") ""
+    |> sprintf "<pre>Новые сообщения в канале %s</pre>\n\n%s"  (chName.ToUpper ())

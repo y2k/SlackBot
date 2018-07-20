@@ -125,7 +125,7 @@ module Services =
         printfn "handleTelegramCommand | %s" message
         match Message.parseCommand message with
         | Top -> 
-            Slack.getSlackChannels() 
+            Slack.getSlackChannels
             >>- Message.makeMessageForTopChannels
         | Ls -> 
             DB.agent.PostAndAsyncReply QueryUsers
