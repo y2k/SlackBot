@@ -5,9 +5,18 @@ module String =
 
 [<AutoOpen>]
 module Operators = 
-    let inline uncurry f a b = f (a, b)
+    let inline always a _ = a
+    let inline uncurry f (a, b) = f a b
+    let inline curry f a b = f (a, b)
     let inline (>>=) x f = async.Bind (x, f)
     let inline (>>-) x f = async.Bind (x, async.Return << f)
+    let inline (>=>) f1 f2 x = f1 x >>= f2
+    let inline (<*>) a1 a2 =
+        async {
+            let! x1 = a1
+            let! x2 = a2
+            return x1, x2
+        }
 
 module Async = 
     let map3 f o =

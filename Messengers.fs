@@ -1,5 +1,6 @@
 namespace SlackToTelegram
 
+open System
 open Infrastructure
 
 type SlackChannel = 
@@ -9,6 +10,8 @@ type SlackChannel =
       purpose     : string }
 
 module Gitter = 
+    let private token = lazy (Environment.GetEnvironmentVariable "GITTER_TOKEN")
+
     type GitterMessageUser = { username: string }
     type GitterMessage = { text: string; fromUser: GitterMessageUser; id: string }
     type GitterMessageList = GitterMessage list
@@ -22,25 +25,24 @@ module Gitter =
         | Regex "\"troupe\":{\"id\":\"([^\"]+)" [ id ] -> Some id
         | _ -> None
     
-    let getMessages (url : string) (token : string) = 
+    let getMessages (url : string) = 
         url
         |> Http.downloadString []
         |> Async.mapOption extractIdFromHtml
         >>- sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages"
-        >>= Http.downloadJson<GitterMessageList> [ "x-access-token", token ]
+        >>= Http.downloadJson<GitterMessageList> [ "x-access-token", token.Value ]
         >>- (List.map toMessage >> List.rev)
 
 module Slack = 
-    open System
     open SlackAPI
 
-    let private userId = Environment.GetEnvironmentVariable "SLACK_API_USERID"
-    let private password = Environment.GetEnvironmentVariable "SLACK_API_PASSWORD"
+    let private userId = lazy (Environment.GetEnvironmentVariable "SLACK_API_USERID")
+    let private password = lazy (Environment.GetEnvironmentVariable "SLACK_API_PASSWORD")
 
     let private makeClient =
         async {
             let! response =
-                SlackTaskClient.AuthSignin (userId, "T09229ZC6", password)
+                SlackTaskClient.AuthSignin (userId.Value, "T09229ZC6", password.Value)
                 |> Async.AwaitTask
             return SlackTaskClient response.token
         }
@@ -82,19 +84,20 @@ module Slack =
         }
 
 module Telegram = 
-    open System
     open Telegram.Bot
     open Telegram.Bot.Types
+
+    let private token = lazy (Environment.GetEnvironmentVariable "TELEGRAM_TOKEN")
     
     type TelegramResponse = 
         | SuccessResponse
         | BotBlockedResponse
         | UnknownErrorResponse
     
-    let sendToTelegramSingle (token : Token) textMode message (user : string) = 
+    let sendToTelegramSingle textMode message (user : string) = 
         async { 
             try 
-                let bot = TelegramBotClient (token)
+                let bot = TelegramBotClient (token.Value)
                 let userId = user |> ChatId.op_Implicit
                 do! match textMode with
                     | Styled -> Enums.ParseMode.Html
@@ -111,20 +114,20 @@ module Telegram =
             | _ -> return UnknownErrorResponse
         }
     
-    let sendBroadcast token message (users: string list) =
+    let sendBroadcast message (users: string list) =
         users
-        |> List.map (sendToTelegramSingle token Styled message)
+        |> List.map (sendToTelegramSingle Styled message)
         |> Async.seq
 
-    let repl token callback = 
-        let bot = TelegramBotClient(token)
+    let repl callback = 
+        let bot = TelegramBotClient (token.Value)
         bot.OnUpdate 
         |> Event.add (fun x -> 
             async { 
                 try 
                     let user = string x.Update.Message.From.Id
                     let! response = callback user x.Update.Message.Text
-                    do! sendToTelegramSingle token Styled response user
+                    do! sendToTelegramSingle Styled response user
                         |> Async.Ignore
                 with e -> printfn "ERROR: %O" e
             } |> Async.Start)
