@@ -12,8 +12,7 @@ let private mkConnection () =
     let db = new SqliteConnection("DataSource=resources/main.db")
     db.Execute("
         CREATE TABLE IF NOT EXISTS channels (id TEXT, user TEXT);
-        DROP TABLE IF EXISTS offsets;
-        CREATE TABLE offsets (id TEXT, ts TEXT);") 
+        CREATE TABLE IF NOT EXISTS offsets (id TEXT, ts TEXT);") 
     |> ignore
     db
 

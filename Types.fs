@@ -1,6 +1,5 @@
 namespace SlackToTelegram
 
-open System
 open Infrastructure
 
 type Source = 
@@ -26,7 +25,7 @@ type ChannelId = string
 
 [<CLIMutable>]
 type Channel = 
-    { id : ChannelId
+    { id   : ChannelId
       user : User }
 
 [<CLIMutable>]
@@ -41,7 +40,7 @@ type ChannelOffset =
 type Message = 
     { text : string
       user : string
-      ts : string }
+      ts   : string }
 
 type TextMode = 
     | Plane

@@ -19,7 +19,7 @@ module Gitter =
     let toMessage (x : GitterMessage) = 
         { text = x.text
           user = x.fromUser.username
-          ts = x.id }
+          ts   = x.id }
 
     let extractIdFromHtml = function 
         | Regex "\"troupe\":{\"id\":\"([^\"]+)" [ id ] -> Some id
@@ -38,13 +38,19 @@ module Slack =
 
     let private userId = lazy (Environment.GetEnvironmentVariable "SLACK_API_USERID")
     let private password = lazy (Environment.GetEnvironmentVariable "SLACK_API_PASSWORD")
+    let private cachedClient : SlackTaskClient option ref = ref None
 
     let private makeClient =
         async {
-            let! response =
-                SlackTaskClient.AuthSignin (userId.Value, "T09229ZC6", password.Value)
-                |> Async.AwaitTask
-            return SlackTaskClient response.token
+            match !cachedClient with
+            | Some client -> return client
+            | None ->
+                let! response =
+                    SlackTaskClient.AuthSignin (userId.Value, "T09229ZC6", password.Value)
+                    |> Async.AwaitTask
+                let x = SlackTaskClient response.token
+                cachedClient := Some x
+                return x
         }
 
     let getSlackChannels = 
@@ -79,7 +85,7 @@ module Slack =
                 |> Array.map (fun x ->         
                     { text = x.text
                       user = x.username
-                      ts   = string x.id } )
+                      ts   = string x.ts.Ticks } )
                 |> Array.toList
         }
 
@@ -91,8 +97,8 @@ module Telegram =
     
     type TelegramResponse = 
         | SuccessResponse
-        | BotBlockedResponse
-        | UnknownErrorResponse
+        | BotBlockedResponse of string
+        | UnknownErrorResponse of exn
     
     let sendToTelegramSingle textMode message (user : string) = 
         async { 
@@ -109,9 +115,9 @@ module Telegram =
             with
             | :? AggregateException as ae -> 
                 match ae.InnerException with
-                | :? Exceptions.ApiRequestException -> return BotBlockedResponse
-                | _                                 -> return UnknownErrorResponse
-            | _ -> return UnknownErrorResponse
+                | :? Exceptions.ApiRequestException as e -> return BotBlockedResponse e.Message
+                | e                                      -> return UnknownErrorResponse e
+            | e -> return UnknownErrorResponse e
         }
     
     let sendBroadcast message (users: string list) =
@@ -128,7 +134,7 @@ module Telegram =
                     let user = string x.Update.Message.From.Id
                     let! response = callback user x.Update.Message.Text
                     do! sendToTelegramSingle Styled response user
-                        |> Async.Ignore
+                        >>- function SuccessResponse -> () | e -> printfn "Telegram error = %O" e
                 with e -> printfn "ERROR: %O" e
             } |> Async.Start)
         bot.StartReceiving()

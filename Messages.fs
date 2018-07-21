@@ -24,10 +24,10 @@ let unsubscribe = sprintf "Отписка от <code>%s</code> выполнен�
 
 let makeMessageForTopChannels channels = 
     channels
-    |> List.filter (fun x -> x.num_members >= 100)
+    |> List.filter (fun x -> x.num_members >= 150)
     |> List.sortByDescending (fun x -> x.num_members)
-    |> List.map (fun x -> sprintf "• <b>%O</b> (%O) - %O" x.name x.num_members x.purpose)
-    |> List.fold (sprintf "%s\b%s") "<b>Список доступных каналов:</b> \n"
+    |> List.map (fun x -> sprintf "• <code>%O</code> (%O)." x.name x.num_members)
+    |> List.fold (sprintf "%s\n%s") "<b>Список доступных каналов:</b>"
 
 let makeMessageFromUserChannels (xs: Channel list) = 
     match xs with
@@ -37,7 +37,7 @@ let makeMessageFromUserChannels (xs: Channel list) =
         channels
         |> List.sortBy (fun x -> x.id)
         |> List.map (fun x -> "• <code>" + x.id + "</code>")
-        |> List.fold (sprintf "%s\b%s") "Каналы на которые вы подписаны:\n"
+        |> List.fold (sprintf "%s\n%s") "Каналы на которые вы подписаны:"
 
 let help = "<b>Команды бота:</b>
 • <b>top</b> - топ каналов kotlinlang.slack.com на которые можно подписаться
@@ -55,4 +55,4 @@ let makeUpdateMessage msgs (chName : string) =
                               x.user 
                               (x.text |> WebUtility.HtmlDecode |> WebUtility.HtmlEncode))
     |> List.fold (sprintf "%s\n\n%s") ""
-    |> sprintf "<pre>Новые сообщения в канале %s</pre>\n\n%s"  (chName.ToUpper ())
+    |> sprintf "<pre>Новые сообщения в канале %s</pre>%s"  (chName.ToUpper ())
