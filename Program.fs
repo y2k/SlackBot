@@ -68,9 +68,9 @@ module Updater =
                 |> Async.seq >>- ignore
 
             #if DEBUG
-            do! Async.Sleep 30_000
+            do! Async.Sleep 2_000
             #else
-            do! Async.Sleep 1_000
+            do! Async.Sleep 30_000
             #endif
             do! start ()
         }
