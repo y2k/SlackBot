@@ -28,7 +28,7 @@ module Gitter =
     let getMessages (url : string) = 
         url
         |> Http.downloadString []
-        |> Async.mapOption extractIdFromHtml
+        >>- (extractIdFromHtml >> Option.get)
         >>- sprintf "https://api.gitter.im/v1/rooms/%s/chatMessages"
         >>= Http.downloadJson<GitterMessageList> [ "x-access-token", token.Value ]
         >>- (List.map toMessage >> List.rev)
@@ -74,14 +74,17 @@ module Slack =
 
             let id =
                 channels.channels
-                |> Array.find (fun x -> x.name = name)
+                |> Array.tryFind (fun x -> x.name = name)
 
             let! history =
-                client.GetChannelHistoryAsync (id, count = Nullable 10)
-                |> Async.AwaitTask
+                match id with
+                | None    -> async.Return [||]
+                | Some id ->
+                    client.GetChannelHistoryAsync (id, count = Nullable 10) |> Async.AwaitTask
+                    >>- (fun x -> x.messages)
 
             return
-                history.messages
+                history
                 |> Array.map (fun x ->         
                     { text = x.text
                       user = x.username

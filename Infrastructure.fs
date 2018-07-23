@@ -27,21 +27,12 @@ module Async =
                 return Some r
             | None -> return None
         }
-    let mapOption f mAsync = 
-        async { 
-            let! ma = mAsync
-            return ma
-                   |> f
-                   |> Option.get
-        }
-    
     let forAll f a = 
         async { 
             let! xs = a
             for x in xs do
                 do! f x
         }
-
     let rec seq axs =
         async {
             match axs with
@@ -51,7 +42,6 @@ module Async =
                 let! rxs = seq axs
                 return rx :: rxs
         }
-    
     let map2 f a = async { let! (r1, r2) = a
                            return f r1 r2 }
     let ignore x a = async { let! _ = a
@@ -64,7 +54,6 @@ module Async =
                             return r2, r1 }
 
 module Http = 
-    open System
     open System.IO
     open System.Net.Http
     open Newtonsoft.Json
@@ -99,24 +88,3 @@ module Infrastructure =
         if m.Success then 
             Some(List.tail [ for g in m.Groups -> g.Value ])
         else None
-    
-    let loop action = 
-        let rec loopInner () = 
-            async {
-                try 
-                    do! action()
-                with e -> printfn "ERROR: %O" e
-                do! Async.Sleep 30000
-                do! loopInner()
-            }
-        loopInner() |> Async.RunSynchronously
-
-module Utils = 
-    open System
-    open System.Collections.Generic
-    
-    let tryGet (dict : Dictionary<'k, 'v>) (key : 'k) = 
-        let (success, value) = dict.TryGetValue(key)
-        if success then Some value else None
-    
-    let nowUtc () = DateTime.UtcNow.Subtract(DateTime(1970, 1, 1)).TotalSeconds

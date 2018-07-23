@@ -3,22 +3,17 @@ module Message
 open System.Net
 open SlackToTelegram
 
-module DB = SlackToTelegram.Storage
-module I = SlackToTelegram.Infrastructure
-
 let parseCommand command = 
     match String.split command with
-    | "top" :: _ -> Top
-    | "ls" :: _ -> Ls
+    | "top" :: _      -> Top
+    | "ls" :: _       -> Ls
     | "add" :: x :: _ -> Add x
-    | "rm" :: x :: _ -> Rm x
-    | _ -> Unknow
+    | "rm" :: x :: _  -> Rm x
+    | _               -> Unknow
 
 let subscribe channel = function 
-    | Some _ -> "Подписка на <code>" + channel + "</code> выполнена успешно"
-    | None -> 
-        "Подписка на <code>" + channel 
-        + "</code> не удалась. Неподдерживаемый тип подписок."
+    | Some _ -> sprintf "Подписка на <code>%s</code> выполнена успешно" channel
+    | None   -> sprintf "Подписка на <code>%s</code> не удалась. Неподдерживаемый тип подписок." channel
 
 let unsubscribe = sprintf "Отписка от <code>%s</code> выполнена успешно"
 

@@ -67,11 +67,11 @@ module Updater =
                                fun r -> SaveOffset (channelId, offset, r)))
                 |> Async.seq >>- ignore
 
-#if DEBUG
+            #if DEBUG
             do! Async.Sleep 30_000
-#else
+            #else
             do! Async.Sleep 1_000
-#endif
+            #endif
             do! start ()
         }
 
