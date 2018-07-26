@@ -12,7 +12,7 @@ RUN dotnet publish -c Release -r linux-x64 --self-contained false -o out
 # Deploy stage
 # ###############################
 
-FROM microsoft/dotnet:2.1-runtime
+FROM microsoft/dotnet:2.1.2-runtime
 
 WORKDIR /app
 COPY --from=0 /app/out .
